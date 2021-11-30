@@ -123,9 +123,7 @@ public class GDBBackend_7_12 extends GDBBackend {
 		return fDummyErrorStream;
 	}
 
-	/** @deprecated Override {@link #getDebuggerCommandLineArray()} instead */
 	@Override
-	@Deprecated(since = "6.4", forRemoval = true)
 	protected String[] getDebuggerCommandLine() {
 		// Start from the original command line method which
 		// could have been overridden by extenders, and add what we need

@@ -125,7 +125,6 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2 {
 				return;
 			}
 		}
-
 		SessionType sessionType = LaunchUtils.getSessionType(config);
 		boolean attach = LaunchUtils.getIsAttach(config);
 
@@ -224,7 +223,7 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2 {
 		final IProgressMonitor subMon2 = new SubProgressMonitor(monitor, 4,
 				SubProgressMonitor.PREPEND_MAIN_LABEL_TO_SUBTASK);
 
-		Query<Object> completeLaunchQuery = new Query<>() {
+		Query<Object> completeLaunchQuery = new Query<Object>() {
 			@Override
 			protected void execute(final DataRequestMonitor<Object> rm) {
 				DsfServicesTracker tracker = new DsfServicesTracker(GdbPlugin.getBundleContext(),
@@ -294,7 +293,7 @@ public class GdbLaunchDelegate extends AbstractCLaunchDelegate2 {
 	protected void cleanupLaunch(ILaunch launch) throws DebugException {
 		if (launch instanceof GdbLaunch) {
 			final GdbLaunch gdbLaunch = (GdbLaunch) launch;
-			Query<Object> launchShutdownQuery = new Query<>() {
+			Query<Object> launchShutdownQuery = new Query<Object>() {
 				@Override
 				protected void execute(DataRequestMonitor<Object> rm) {
 					gdbLaunch.shutdownSession(rm);
