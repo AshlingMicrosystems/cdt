@@ -26,12 +26,17 @@ package org.eclipse.cdt.dsf.mi.service;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -2020,30 +2025,166 @@ public class MIVariableManager implements ICommandControl {
 				return;
 			}
 
-			// No need to be in ready state or to lock the object
-			fCommandControl.queueCommand(
-					fCommandFactory.createMIVarAssign(getRootToUpdate().getControlDMContext(), getGdbName(), value),
-					new DataRequestMonitor<MIVarAssignInfo>(fSession.getExecutor(), rm) {
-						@Override
-						protected void handleSuccess() {
-							// We must also mark all variable objects
-							// as out-of-date. This is because some variable objects may be affected
-							// by this one having changed.
-							// e.g.,
-							//    int i;
-							//    int* pi = &i;
-							// Here, if 'i' is changed by the user, then 'pi' will also change
-							// Since there is no way to know this unless we keep track of all addresses,
-							// we must mark everything as out-of-date.  See bug 213061
-							markAllOutOfDate();
+			/*ASHLING CUSTOMIZATION - handling union data structure in register view
+			 *If the data structure is union the value of the getType() will be like "union structureName"
+			 */
+			if (getNumChildrenHint() > 0 && getType().startsWith("union ")) { //$NON-NLS-1$
+				handleUnion(value, rm);
+			}
+			//ASHLING CUSTOMIZATION - handling union data structure in register view
 
-							// Useless since we just marked everything as out-of-date
-							// resetValues(getData().getValue());
+			else {
 
-							rm.done();
-						}
-					});
+				// No need to be in ready state or to lock the object
+				fCommandControl.queueCommand(
+						fCommandFactory.createMIVarAssign(getRootToUpdate().getControlDMContext(), getGdbName(), value),
+						new DataRequestMonitor<MIVarAssignInfo>(fSession.getExecutor(), rm) {
+							@Override
+							protected void handleSuccess() {
+								// We must also mark all variable objects
+								// as out-of-date. This is because some variable objects may be affected
+								// by this one having changed.
+								// e.g.,
+								//    int i;
+								//    int* pi = &i;
+								// Here, if 'i' is changed by the user, then 'pi' will also change
+								// Since there is no way to know this unless we keep track of all addresses,
+								// we must mark everything as out-of-date.  See bug 213061
+								markAllOutOfDate();
+
+								// Useless since we just marked everything as out-of-date
+								// resetValues(getData().getValue());
+
+								rm.done();
+							}
+						});
+			}
 		}
+
+		/* ASHLING CUSTOMIZATION - Method to handle union data structure in register view
+		 *
+		 * Here we are getting value in the format "{float = 0, double = 0}", So we are splitting the value and getting the child name to verify the child name from the gdb
+		 * Initially we are calling -var-list-children var command to  return a list of the children of the specified variable object and create variable objects for them
+		 * then check wthether the child names are valid from the UI comparing the child name from UI and child name from GDB
+		 */
+		private void handleUnion(String value, RequestMonitor rm) {
+
+			Map<String, String> registerChildMap = new LinkedHashMap<>();
+			String dataContent = value.replace("{", "").replace("}", ""); //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+			String childData[] = dataContent.split(","); //$NON-NLS-1$
+			if (childData.length == getNumChildrenHint()) {
+				for (String child : childData) {
+					String childValues[] = child.split("="); //$NON-NLS-1$
+					if (childValues.length != 2) {
+						rm.setStatus(Status.error("Invalid register view entry")); //$NON-NLS-1$
+						rm.done();
+						return;
+					} else {
+						registerChildMap.put(getGdbName() + "." + childValues[0].trim(), //$NON-NLS-1$
+								childValues[1].trim());
+					}
+				}
+
+				fCommandControl.queueCommand(
+						fCommandFactory.createMIVarListChildren(getRootToUpdate().getControlDMContext(), getGdbName()),
+						new DataRequestMonitor<MIVarListChildrenInfo>(fSession.getExecutor(), rm) {
+							@Override
+							protected void handleSuccess() {
+
+								List<String> children = Arrays.asList(getData().getMIVars()).stream()
+										.map(MIVar::getVarName).collect(Collectors.toList());
+
+								if (validateKeys(registerChildMap.keySet(), children)) {
+
+									writeValueTOUnionRegister(registerChildMap, rm);
+								} else {
+									rm.done();
+								}
+							}
+
+						});
+			} else {
+				rm.done();
+			}
+
+		}
+
+		/*
+		 * then -var-evaluate-expression to get values of the child variable from gdb eg: -var-evaluate-expression var2.float,
+		 * if they are same we can assign the value to the child name eg: -var-assign var2.float 3.14
+		 */
+		private void writeValueTOUnionRegister(Map<String, String> registerChildMap, RequestMonitor rm) {
+
+			CopyOnWriteArrayList<String> updatedChildList = new CopyOnWriteArrayList<>();
+			CountingRequestMonitor crm = new CountingRequestMonitor(fSession.getExecutor(), rm) {
+				@Override
+				protected void handleSuccess() {
+
+					if (updatedChildList.isEmpty()) {
+						rm.done();
+						return;
+					}
+					Optional<String> optional = registerChildMap.keySet().stream()
+							.filter(k -> updatedChildList.contains(k)).findFirst();
+					if (optional.isPresent()) {
+						fCommandControl.queueCommand(
+								fCommandFactory.createMIVarAssign(getRootToUpdate().getControlDMContext(),
+										updatedChildList.get(0), registerChildMap.get(updatedChildList.get(0))),
+								new DataRequestMonitor<MIVarAssignInfo>(fSession.getExecutor(), rm) {
+									@Override
+									protected void handleSuccess() {
+										// We must also mark all variable objects
+										// as out-of-date. This is because some variable objects may be affected
+										// by this one having changed.
+										// e.g.,
+										//    int i;
+										//    int* pi = &i;
+										// Here, if 'i' is changed by the user, then 'pi' will also change
+										// Since there is no way to know this unless we keep track of all addresses,
+										// we must mark everything as out-of-date.  See bug 213061
+										markAllOutOfDate();
+
+										// Useless since we just marked everything as out-of-date
+										// resetValues(getData().getValue());
+
+										rm.done();
+									}
+								});
+					} else {
+						rm.done();
+					}
+
+				}
+
+			};
+
+			registerChildMap.forEach((k, v) -> {
+				fCommandControl.queueCommand(
+						fCommandFactory.createMIVarEvaluateExpression(getRootToUpdate().getControlDMContext(), k),
+						new DataRequestMonitor<MIVarEvaluateExpressionInfo>(fSession.getExecutor(), crm) {
+							@Override
+							protected void handleSuccess() {
+
+								if (!getData().getValue().equals(registerChildMap.get(k))) {
+									updatedChildList.add(k);
+								}
+								crm.done();
+							}
+						});
+			});
+			crm.setDoneCount(registerChildMap.size());
+
+		}
+
+		/*
+		 * Check whether the key names from the gdb and UI are same
+		 */
+		private boolean validateKeys(Set<String> set, List<String> children) {
+			return set.size() == children.size()
+					&& !set.stream().filter(k -> !children.contains(k)).findAny().isPresent();
+		}
+
+		// ASHLING CUSTOMIZATION - Method to handle union data structure in register view
 
 		private boolean isAccessQualifier(String str) {
 			return str.equals("private") || str.equals("public") || str.equals("protected"); //$NON-NLS-1$  //$NON-NLS-2$  //$NON-NLS-3$
