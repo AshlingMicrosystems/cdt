@@ -26,6 +26,10 @@ import org.eclipse.cdt.dsf.ui.viewmodel.IVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.update.AbstractCachingVMProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.update.UserEditEvent;
+import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
 
 public class RegisterBitFieldCellModifier extends WatchExpressionCellModifier {
 
@@ -169,8 +173,19 @@ public class RegisterBitFieldCellModifier extends WatchExpressionCellModifier {
 					} else {
 						formatId = IFormattedValues.NATURAL_FORMAT;
 					}
-					fDataAccess.writeBitField(element, (String) value, formatId);
-					fProvider.handleEvent(new UserEditEvent(element));
+					//<CUSTOMISATION> ASHLING - Added try and catch block for pop up editing - git-lab#4
+					try {
+						fDataAccess.writeBitField(element, (String) value, formatId);
+						fProvider.handleEvent(new UserEditEvent(element));
+					}
+					// This handling is done when user try to change drop down index to not available index
+					catch (ArrayIndexOutOfBoundsException e) {
+						IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+						MessageDialog msg = new MessageDialog(window.getShell(), "Register View Error", null, //$NON-NLS-1$
+								"This operation is not supported", 4, new String[] { IDialogConstants.OK_LABEL }, 0); //$NON-NLS-1$
+						msg.open();
+					}
+					//</CUSTOMISATION>
 				}
 			} else {
 				if (value instanceof Integer) {
@@ -182,8 +197,19 @@ public class RegisterBitFieldCellModifier extends WatchExpressionCellModifier {
 					/*
 					 *  Write the bit field using the selected mnemonic.
 					 */
-					fDataAccess.writeBitField(element, fBitFieldData.getMnemonics()[val.intValue()]);
-					fProvider.handleEvent(new UserEditEvent(element));
+					//<CUSTOMISATION> ASHLING - Added try and catch block for pop up editing - git-lab#4
+					try {
+						fDataAccess.writeBitField(element, fBitFieldData.getMnemonics()[val.intValue()]);
+						fProvider.handleEvent(new UserEditEvent(element));
+					}
+					// This handling is done when user try to change drop down index to not available index
+					catch (ArrayIndexOutOfBoundsException e) {
+						IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+						MessageDialog msg = new MessageDialog(window.getShell(), "Register View Error", null, //$NON-NLS-1$
+								"This operation is not supported", 4, new String[] { IDialogConstants.OK_LABEL }, 0); //$NON-NLS-1$
+						msg.open();
+					}
+					//</CUSTOMISATION>
 				}
 			}
 		} else {
