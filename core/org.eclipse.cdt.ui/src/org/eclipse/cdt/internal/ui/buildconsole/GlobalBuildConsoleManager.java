@@ -21,12 +21,10 @@ import org.eclipse.cdt.internal.ui.preferences.BuildConsolePreferencePage;
 import org.eclipse.cdt.ui.CUIPlugin;
 import org.eclipse.core.filesystem.URIUtil;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.core.variables.VariablesPlugin;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
@@ -183,14 +181,6 @@ public class GlobalBuildConsoleManager extends BuildConsoleManager {
 		boolean keepLog = prefs.getBoolean(KEY_KEEP_LOG, CONSOLE_KEEP_LOG_DEFAULT);
 		if (keepLog) {
 			String strLocation = prefs.get(KEY_LOG_LOCATION, getDefaultConsoleLogLocation());
-			//<CUSTOMISATION> ASHLING - Added support for variables resolution - git-lab#201, JIRA-SOCVE-155
-			try {
-				strLocation = VariablesPlugin.getDefault().getStringVariableManager()
-						.performStringSubstitution(strLocation);
-			} catch (CoreException e) {
-				CUIPlugin.log("Not able to resolve :" + strLocation, e); //$NON-NLS-1$
-			}
-			//</CUSTOMISATION>
 			if (strLocation.trim().length() > 0) {
 				logURI = URIUtil.toURI(strLocation);
 			}

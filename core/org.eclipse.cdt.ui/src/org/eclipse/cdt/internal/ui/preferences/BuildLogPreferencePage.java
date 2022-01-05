@@ -10,7 +10,6 @@
  *
  * Contributors:
  *     Andrew Gvozdev (Quoin Inc.) - initial API and implementation
- *     ASHLING - Added support for variables button
  *******************************************************************************/
 package org.eclipse.cdt.internal.ui.preferences;
 
@@ -23,8 +22,6 @@ import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.layout.PixelConverter;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
@@ -38,7 +35,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.dialogs.ListDialog;
 import org.eclipse.ui.dialogs.PropertyPage;
 import org.osgi.service.prefs.BackingStoreException;
 import org.osgi.service.prefs.Preferences;
@@ -46,15 +42,12 @@ import org.osgi.service.prefs.Preferences;
 /**
  * Preference page defining build log properties.
  */
-//<CUSTOMISATION> ASHLING - Added support for variables button, git-lab#201, JIRA-SOCVE-155
 public class BuildLogPreferencePage extends PropertyPage implements ICOptionContainer {
 	private boolean isProjectLevel;
 	private Button enableLoggingCheckbox;
 	private Button browseButton;
 	private Text logLocationText;
 	private Label logLocationLabel;
-	//<CUSTOMISATION/> ASHLING
-	private Button variablesButton;
 
 	@Override
 	protected Control createContents(Composite parent) {
@@ -64,7 +57,7 @@ public class BuildLogPreferencePage extends PropertyPage implements ICOptionCont
 			BuildConsoleManager consoleManager = getConsoleManager();
 			Preferences prefs = consoleManager.getBuildLogPreferences(project);
 
-			Composite contents = ControlFactory.createCompositeEx(parent, 4, GridData.FILL_BOTH);
+			Composite contents = ControlFactory.createCompositeEx(parent, 3, GridData.FILL_BOTH);
 			((GridLayout) contents.getLayout()).makeColumnsEqualWidth = false;
 
 			ControlFactory.createEmptySpace(contents, 3);
@@ -83,12 +76,13 @@ public class BuildLogPreferencePage extends PropertyPage implements ICOptionCont
 				}
 			});
 
-			ControlFactory.createEmptySpace(contents, 4);
+			ControlFactory.createEmptySpace(contents, 3);
 
 			// Log file location: [....................]
 			logLocationLabel = ControlFactory.createLabel(contents,
 					PreferencesMessages.BuildLogPreferencePage_LogLocation);
 			((GridData) logLocationLabel.getLayoutData()).grabExcessHorizontalSpace = false;
+
 			logLocationText = ControlFactory.createTextField(contents, SWT.SINGLE | SWT.BORDER);
 			String logLocation = prefs.get(BuildConsoleManager.KEY_LOG_LOCATION,
 					consoleManager.getDefaultConsoleLogLocation(project));
@@ -104,7 +98,6 @@ public class BuildLogPreferencePage extends PropertyPage implements ICOptionCont
 			// [Browse...]
 			browseButton = ControlFactory.createPushButton(contents, PreferencesMessages.BuildLogPreferencePage_Browse);
 			((GridData) browseButton.getLayoutData()).horizontalAlignment = GridData.END;
-			((GridData) browseButton.getLayoutData()).horizontalSpan = 1;
 			browseButton.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent event) {
@@ -120,16 +113,7 @@ public class BuildLogPreferencePage extends PropertyPage implements ICOptionCont
 				}
 
 			});
-			//<CUSTOMISATION> ASHLING
-			variablesButton = new Button(contents, SWT.NONE);
-			variablesButton.setText("Variables..."); //$NON-NLS-1$
-			variablesButton.addSelectionListener(new SelectionAdapter() {
-				@Override
-				public void widgetSelected(SelectionEvent e) {
-					variablesButtonSelected(logLocationText);
-				}
-			});
-			//<CUSTOMISATION> ASHLING
+
 			updateEnablements();
 		}
 		return parent;
@@ -205,21 +189,4 @@ public class BuildLogPreferencePage extends PropertyPage implements ICOptionCont
 		logLocationText.setEnabled(isLoggingEnabled);
 		browseButton.setEnabled(isLoggingEnabled);
 	}
-
-	//<CUSTOMISATION> ASHLING
-	private void variablesButtonSelected(Text text) {
-		String[] variableList = { "eclipse_home", "workspace_loc" }; //$NON-NLS-1$ //$NON-NLS-2$
-		ListDialog variableDialog = new ListDialog(getShell());
-		variableDialog.setAddCancelButton(true);
-		variableDialog.setContentProvider(new ArrayContentProvider());
-		variableDialog.setLabelProvider(new LabelProvider());
-		variableDialog.setInput(variableList);
-		variableDialog.setTitle("Choose Variable"); //$NON-NLS-1$
-		variableDialog.setInitialSelections(variableList[0]);
-		if (variableDialog.open() == ListDialog.OK) {
-			// Using [0] as only one selection is allowed,getResult() returns array of selected items.
-			text.insert("${" + variableDialog.getResult()[0] + "}"); //$NON-NLS-1$ //$NON-NLS-2$
-		}
-	}
-	//<CUSTOMISATION> ASHLING
 }

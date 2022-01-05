@@ -1221,7 +1221,7 @@
 		      defaultValue="false"
 		      name="%Option.Posix.Debug.sanitaddress"
 		      category="gnu.c.compiler.category.debug"
-		      command="-fsanitize-address"
+		      command="-fsanitize=address"
 		      id="gnu.c.compiler.option.debugging.sanitaddress"
 		      valueType="boolean">
 		  </option>
@@ -1229,7 +1229,7 @@
 		      defaultValue="false"
 		      name="%Option.Posix.Debug.sanitpointers"
 		      category="gnu.c.compiler.category.debug"
-		      command="-fsanitize-pointer-compare -fsanitize=pointer-subtract"
+		      command="-fsanitize=pointer-compare -fsanitize=pointer-subtract"
 		      id="gnu.c.compiler.option.debugging.sanitpointers"
 		      valueType="boolean">
 		  </option>
@@ -2168,7 +2168,7 @@
           variableFormat="${=}"
           isVariableCaseSensitive="true"
           reservedMacroNames="ROOT,DEPS,OBJS,.*_SRCS,EXECUTABLES,SUBDIRS,LIBS,USER_OBJS,.*_INPUTS,.*_OUTPUTS"
-          buildfileGenerator="org.eclipse.cdt.managedbuilder.makegen.gnu.GnuMakefileGenerator"
+          buildfileGenerator="org.eclipse.cdt.managedbuilder.makegen.gnu2.GnuMakefileGenerator"
           macroInputFileNameValue="$(notdir $&lt;)"
           macroInputFileExtValue="$(suffix $(notdir $&lt;))"
           macroInputFileBaseNameValue="$(basename $(notdir $&lt;))"

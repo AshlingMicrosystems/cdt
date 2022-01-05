@@ -219,31 +219,21 @@ public class GDBRunControl extends MIRunControl {
 	@Override
 	public void getExecutionContexts(IContainerDMContext containerDmc,
 			final DataRequestMonitor<IExecutionDMContext[]> rm) {
-		// user groups support
-		// Delegate to grouping service, if present
-		IGDBGrouping groupService = getServicesTracker().getService(IGDBGrouping.class);
-		if (groupService != null) {
-			groupService.getExecutionContexts(containerDmc, rm);
-			return;
-		}
-		// end user group support
-
-		fProcService.getProcessesBeingDebugged(containerDmc != null ? containerDmc : fConnection.getContext(),
-				new DataRequestMonitor<IDMContext[]>(getExecutor(), rm) {
-					@Override
-					protected void handleSuccess() {
-						if (getData() instanceof IExecutionDMContext[]) {
-							IExecutionDMContext[] execDmcs = (IExecutionDMContext[]) getData();
-							raiseExitEvents(execDmcs);
-							fOldExecutionCtxts = execDmcs;
-							rm.setData(fOldExecutionCtxts);
-						} else {
-							rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR,
-									"Invalid contexts", null)); //$NON-NLS-1$
-						}
-						rm.done();
-					}
-				});
+		fProcService.getProcessesBeingDebugged(containerDmc, new DataRequestMonitor<IDMContext[]>(getExecutor(), rm) {
+			@Override
+			protected void handleSuccess() {
+				if (getData() instanceof IExecutionDMContext[]) {
+					IExecutionDMContext[] execDmcs = (IExecutionDMContext[]) getData();
+					raiseExitEvents(execDmcs);
+					fOldExecutionCtxts = execDmcs;
+					rm.setData(fOldExecutionCtxts);
+				} else {
+					rm.setStatus(
+							new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid contexts", null)); //$NON-NLS-1$
+				}
+				rm.done();
+			}
+		});
 	}
 
 	private void raiseExitEvents(IExecutionDMContext[] ctxts) {

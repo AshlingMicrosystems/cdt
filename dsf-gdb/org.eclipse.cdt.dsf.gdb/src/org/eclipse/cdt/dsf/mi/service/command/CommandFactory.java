@@ -467,10 +467,7 @@ public class CommandFactory {
 	}
 
 	public ICommand<MIBreakListInfo> createMIBreakList(IBreakpointsTargetDMContext ctx) {
-		//<CUSTOMISATION> ASHLING - Ignoring context since there is a gdb issue with "-break-list --thread-group i1", thread selection automatically moves to halted thread
-		//git-lab riscfree-ui#296
-		return new MIBreakList(null);
-		//</CUSTOMISATION>
+		return new MIBreakList(ctx);
 	}
 
 	public ICommand<MIInfo> createMIBreakPasscount(IBreakpointsTargetDMContext ctx, int tracepoint, int passCount) {
@@ -893,6 +890,7 @@ public class CommandFactory {
 	public ICommand<MIInfo> createMIGDBSetStartupWithShell(ICommandControlDMContext ctx, boolean enable) {
 		return new MIGDBSetStartupWithShell(ctx, enable);
 	}
+
 	public ICommand<MIInfo> createMIGDBSetTargetAsync(ICommandControlDMContext ctx, boolean isSet) {
 		return new MIGDBSetTargetAsync(ctx, isSet);
 	}

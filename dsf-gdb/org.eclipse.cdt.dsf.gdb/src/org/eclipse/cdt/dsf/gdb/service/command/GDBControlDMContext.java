@@ -15,7 +15,6 @@
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.service.command;
 
-import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.IModules.ISymbolDMContext;
 import org.eclipse.cdt.dsf.debug.service.ISignals.ISignalsDMContext;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
@@ -31,10 +30,6 @@ public class GDBControlDMContext extends MIControlDMContext implements ISymbolDM
 
 	public GDBControlDMContext(String sessionId, String commandControlId) {
 		super(sessionId, commandControlId);
-	}
-
-	public GDBControlDMContext(String sessionId, String commandControlId, IDMContext[] parents) {
-		super(sessionId, parents, commandControlId);
 	}
 
 }

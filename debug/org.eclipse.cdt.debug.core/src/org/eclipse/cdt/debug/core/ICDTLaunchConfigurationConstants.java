@@ -460,13 +460,4 @@ public interface ICDTLaunchConfigurationConstants {
 	 * Status code indicating an unexpected internal error.
 	 */
 	public static final int ERR_INTERNAL_ERROR = 150;
-
-	/*	
-	 *<Ashling customization>
-	 * Attribute which determine whether need to take saved register groups from launch
-	 * configuration
-	 * <P>
-	*/
-
-	public static final String ATTR_DEBUGGER_LOAD_REGISTER_GROUP_PERSISTANCE = CDT_LAUNCH_ID + ".loadRegisterGroups"; //$NON-NLS-1$
 }

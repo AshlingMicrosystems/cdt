@@ -24,7 +24,6 @@ import org.eclipse.osgi.util.NLS;
  * Preference strings.
  */
 class MessagesForPreferences extends NLS {
-	public static String GdbDebugPreferencePage_contextSpecificBpFilter;
 	public static String GdbDebugPreferencePage_Add_button;
 	public static String GdbDebugPreferencePage_Advanced_button;
 	public static String GdbDebugPreferencePage_Advanced_timeout_dialog_message;
@@ -83,6 +82,8 @@ class MessagesForPreferences extends NLS {
 	public static String GdbConsolePreferencePage_BufferLines;
 	public static String GdbDebugPreferencePage_remoteTimeout_label;
 	public static String GdbDebugPreferencePage_remoteTimeout_tooltip;
+
+	public static String GdbDebugPreferencePage_suspendTimeout_label;
 
 	static {
 		// initialize resource bundle

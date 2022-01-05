@@ -7,6 +7,7 @@ COPYING text
 NEWS text
 README text
 CONTRIBUTING text
+LICENSE text
 *.txt text
 *.md text
 *.zip binary
@@ -17,6 +18,7 @@ CONTRIBUTING text
 *.cc text
 *.cpp text
 *.h text
+*.in text
 *.s text
 *.S text
 *.elf binary

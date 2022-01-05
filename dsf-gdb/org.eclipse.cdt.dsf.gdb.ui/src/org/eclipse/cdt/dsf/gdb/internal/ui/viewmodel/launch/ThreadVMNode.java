@@ -254,33 +254,24 @@ public class ThreadVMNode extends AbstractThreadVMNode implements IElementMement
 
 	@Override
 	protected void updateElementsInSessionThread(final IChildrenUpdate update) {
-		IRunControl runControl = getServicesTracker().getService(IRunControl.class);
-
-		// Get the parent of the treads, which can be a process or a group.  IContainer allows us to get either one.
+		IProcesses procService = getServicesTracker().getService(IProcesses.class);
 		final IContainerDMContext contDmc = findDmcInPath(update.getViewerInput(), update.getElementPath(),
 				IContainerDMContext.class);
-		if (runControl == null || contDmc == null) {
+		if (procService == null || contDmc == null) {
 			handleFailedUpdate(update);
 			return;
 		}
 
-		runControl.getExecutionContexts(contDmc,
-				new ViewerDataRequestMonitor<IExecutionDMContext[]>(getSession().getExecutor(), update) {
+		procService.getProcessesBeingDebugged(contDmc,
+				new ViewerDataRequestMonitor<IDMContext[]>(getSession().getExecutor(), update) {
 					@Override
 					public void handleCompleted() {
-						if (!isSuccess()) {
+						if (!isSuccess() || !(getData() instanceof IExecutionDMContext[])) {
 							handleFailedUpdate(update);
 							return;
 						}
-						IExecutionDMContext[] execDmcs = getData();
-						// Extract the threads by removing any container
-						List<IExecutionDMContext> threadDmcs = new ArrayList<>();
-						for (IExecutionDMContext exec : execDmcs) {
-							if (!(exec instanceof IContainerDMContext)) {
-								threadDmcs.add(exec);
-							}
-						}
-						execDmcs = threadDmcs.toArray(new IExecutionDMContext[threadDmcs.size()]);
+
+						IExecutionDMContext[] execDmcs = (IExecutionDMContext[]) getData();
 						if (fHideRunningThreadsProperty) {
 							// Remove running threads from the list
 							IRunControl runControl = getServicesTracker().getService(IRunControl.class);
@@ -288,6 +279,7 @@ public class ThreadVMNode extends AbstractThreadVMNode implements IElementMement
 								handleFailedUpdate(update);
 								return;
 							}
+
 							List<IExecutionDMContext> execDmcsNotRunning = new ArrayList<>();
 							for (IExecutionDMContext execDmc : execDmcs) {
 								// Keep suspended or stepping threads

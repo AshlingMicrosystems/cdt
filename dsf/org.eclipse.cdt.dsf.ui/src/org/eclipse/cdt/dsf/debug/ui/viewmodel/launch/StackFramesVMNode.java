@@ -699,7 +699,7 @@ public class StackFramesVMNode extends AbstractDMVMNode
 					// which case, the refresh will occur when the stepping sequence slows down or stops.  Trying to
 					// refresh the whole stack trace with every step would slow down stepping too much.
 					if (triggeringCtx == null || !runControlService.isStepping(triggeringCtx)) {
-						parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT | IModelDelta.STATE);
+						parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
 					}
 
 					rm.done();

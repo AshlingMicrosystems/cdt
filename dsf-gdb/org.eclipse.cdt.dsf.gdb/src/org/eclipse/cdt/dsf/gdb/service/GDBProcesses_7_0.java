@@ -76,14 +76,12 @@ import org.eclipse.cdt.dsf.gdb.IGdbDebugConstants;
 import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.launching.InferiorRuntimeProcess;
-import org.eclipse.cdt.dsf.gdb.service.GDBProcesses_7_1.MIThreadDMData_7_1;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIProcessDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIProcesses;
-import org.eclipse.cdt.dsf.mi.service.IMIProcesses2;
 import org.eclipse.cdt.dsf.mi.service.IMIRunControl;
 import org.eclipse.cdt.dsf.mi.service.IMIRunControl.MIRunMode;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpointsManager;
@@ -121,8 +119,7 @@ import org.osgi.framework.BundleContext;
  * This class implements the IProcesses interface for GDB 7.0
  * which supports the new -list-thread-groups command.
  */
-public class GDBProcesses_7_0 extends AbstractDsfService
-		implements IGDBProcesses, IMIProcesses2, ICachingService, IEventListener {
+public class GDBProcesses_7_0 extends AbstractDsfService implements IGDBProcesses, ICachingService, IEventListener {
 
 	/**
 	 * The maximum amount of exited processes we can show.
@@ -330,11 +327,11 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 		 * <p/>
 		 *
 		 * @param sessionId Session that this context belongs to.
-		 * @param dmc The parent of this process.
+		 * @param controlDmc The control context parent of this process.
 		 * @param id process identifier.
 		 */
-		public MIProcessDMC(String sessionId, IDMContext dmc, String id) {
-			super(sessionId, dmc == null ? new IDMContext[0] : new IDMContext[] { dmc });
+		public MIProcessDMC(String sessionId, ICommandControlDMContext controlDmc, String id) {
+			super(sessionId, controlDmc == null ? new IDMContext[0] : new IDMContext[] { controlDmc });
 			fId = id;
 		}
 
@@ -887,15 +884,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 
 	@Override
 	public IProcessDMContext createProcessContext(ICommandControlDMContext controlDmc, String pid) {
-		return createProcessContext((IDMContext) controlDmc, pid);
-	}
-
-	/**
-	 * @since 5.1
-	 */
-	@Override
-	public IProcessDMContext createProcessContext(IDMContext dmc, String pid) {
-		return new MIProcessDMC(getSession().getId(), dmc, pid);
+		return new MIProcessDMC(getSession().getId(), controlDmc, pid);
 	}
 
 	/**
@@ -930,14 +919,6 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 	@Override
 	public IMIContainerDMContext createContainerContextFromThreadId(ICommandControlDMContext controlDmc,
 			String threadId) {
-		return createContainerContextFromThreadId((IDMContext) controlDmc, threadId);
-	}
-
-	/**
-	 * @since 5.1
-	 */
-	@Override
-	public IMIContainerDMContext createContainerContextFromThreadId(IDMContext dmc, String threadId) {
 		String groupId = getThreadToGroupMap().get(threadId);
 		if (groupId == null) {
 			// this can happen if the threadId was 'all'
@@ -955,19 +936,13 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 			}
 		}
 
-		return createContainerContextFromGroupId(dmc, groupId);
+		return createContainerContextFromGroupId(controlDmc, groupId);
 	}
 
 	/** @since 4.0 */
 	@Override
 	public IMIContainerDMContext createContainerContextFromGroupId(ICommandControlDMContext controlDmc,
 			String groupId) {
-		return createContainerContextFromGroupId((IDMContext) controlDmc, groupId);
-	}
-
-	/** @since 5.1*/
-	@Override
-	public IMIContainerDMContext createContainerContextFromGroupId(IDMContext dmc, String groupId) {
 		if (groupId == null || groupId.length() == 0) {
 			// This happens when we are doing non-attach, so for GDB < 7.2, we know that in that case
 			// we are single process, so lets see if we have the group in our map.
@@ -985,7 +960,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 			// For GDB 7.0 and 7.1, the groupId is the pid, so we can use it directly
 			pid = groupId;
 		}
-		IProcessDMContext processDmc = createProcessContext(dmc, pid);
+		IProcessDMContext processDmc = createProcessContext(controlDmc, pid);
 		return createContainerContext(processDmc, groupId);
 	}
 
@@ -1156,9 +1131,8 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 									// We must indicate and empty id by using null
 									if (id.isEmpty())
 										id = null;
-									//<CUSTOMISATION-ASHLING>This is a temporary hack to get rid of git-lab#141/ https://bugs.eclipse.org/bugs/show_bug.cgi?id=339005
-									threadData = createThreadDMData(thread);//new MIThreadDMData("", id); //$NON-NLS-1$
-									//</CUSTOMISATION>
+
+									threadData = new MIThreadDMData("", id); //$NON-NLS-1$
 								}
 							}
 
@@ -1175,32 +1149,6 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Invalid DMC type", null)); //$NON-NLS-1$
 			rm.done();
 		}
-	}
-
-	/**
-	 * <CUSTOMISATION - ASHLING>
-	 */
-	private IGdbThreadDMData createThreadDMData(MIThread thread) {
-		String id = ""; //$NON-NLS-1$
-
-		if (thread.getOsId() != null) {
-			id = thread.getOsId();
-		}
-		// append thread details (if any) to the thread ID
-		// as for GDB 6.x with CLIInfoThreadsInfo#getOsId()
-		final String details = thread.getDetails();
-		if (details != null && !details.isEmpty()) {
-			if (!id.isEmpty())
-				id += " "; //$NON-NLS-1$
-			id += "(" + details + ")"; //$NON-NLS-1$ //$NON-NLS-2$
-		}
-		// We must indicate and empty id by using null
-		if (id.isEmpty())
-			id = null;
-
-		String name = thread.getName();
-		String core = thread.getCore();
-		return new MIThreadDMData_7_1(name == null ? "" : name, id, core == null ? null : new String[] { core }); //$NON-NLS-1$
 	}
 
 	@Override

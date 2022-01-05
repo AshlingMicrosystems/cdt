@@ -14,10 +14,8 @@
 package org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout.actions;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
-import org.eclipse.cdt.dsf.concurrent.ImmediateDataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.debug.internal.provisional.service.IExecutionContextTranslator;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
@@ -32,7 +30,7 @@ public class DsfGroupDebugContextsCommand extends DsfDebugViewLayoutCommand {
 
 	@Override
 	void executeOnDsfThread(IExecutionContextTranslator translator, IExecutionDMContext[] contexts, RequestMonitor rm) {
-		translator.group(contexts, new ImmediateDataRequestMonitor<IContainerDMContext>(rm));
+		translator.group(contexts, rm);
 	}
 
 	@Override

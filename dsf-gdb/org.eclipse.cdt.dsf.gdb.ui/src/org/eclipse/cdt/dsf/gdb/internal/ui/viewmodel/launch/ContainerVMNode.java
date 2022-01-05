@@ -18,15 +18,11 @@
 
 package org.eclipse.cdt.dsf.gdb.internal.ui.viewmodel.launch;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Vector;
 import java.util.concurrent.RejectedExecutionException;
 
 import org.eclipse.cdt.debug.internal.ui.pinclone.PinCloneUtils;
 import org.eclipse.cdt.debug.ui.IPinProvider.IPinElementColorDescriptor;
-import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
@@ -39,6 +35,7 @@ import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMData;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
 import org.eclipse.cdt.dsf.debug.ui.IDsfDebugUIConstants;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.launch.AbstractContainerVMNode;
@@ -47,16 +44,12 @@ import org.eclipse.cdt.dsf.debug.ui.viewmodel.launch.ILaunchVMConstants;
 import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.ui.GdbPinProvider;
 import org.eclipse.cdt.dsf.gdb.internal.ui.GdbUIPlugin;
-import org.eclipse.cdt.dsf.gdb.service.IGDBGrouping;
-import org.eclipse.cdt.dsf.gdb.service.IGDBGrouping.IGroupDMContext;
 import org.eclipse.cdt.dsf.gdb.service.IGDBProcesses.IGdbThreadDMData;
 import org.eclipse.cdt.dsf.gdb.service.IGDBProcesses.IGdbThreadExitedDMData;
 import org.eclipse.cdt.dsf.gdb.service.IGDBProcesses.IThreadRemovedDMEvent;
-import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.ui.concurrent.ViewerCountingRequestMonitor;
 import org.eclipse.cdt.dsf.ui.concurrent.ViewerDataRequestMonitor;
-import org.eclipse.cdt.dsf.ui.viewmodel.IVMContext;
 import org.eclipse.cdt.dsf.ui.viewmodel.VMDelta;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.AbstractDMVMProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
@@ -284,37 +277,23 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 
 	@Override
 	protected void updateElementsInSessionThread(final IChildrenUpdate update) {
-		IRunControl runControl = getServicesTracker().getService(IRunControl.class);
-		if (runControl == null) {
+		IProcesses processService = getServicesTracker().getService(IProcesses.class);
+		ICommandControlService controlService = getServicesTracker().getService(ICommandControlService.class);
+		if (processService == null || controlService == null) {
 			handleFailedUpdate(update);
 			return;
 		}
 
-		// Processes can be children of the launch or of a group.
-		// If we find a group in the path then we know we want to list the processes that are children of that group.
-		// If we don't find a group, we will get a null and then the service will give us the top processes, children of the launch.
-		IContainerDMContext group = findDmcInPath(update.getViewerInput(), update.getElementPath(),
-				IGroupDMContext.class);
-		runControl.getExecutionContexts(group,
-				new ViewerDataRequestMonitor<IExecutionDMContext[]>(getExecutor(), update) {
+		processService.getProcessesBeingDebugged(controlService.getContext(),
+				new ViewerDataRequestMonitor<IDMContext[]>(getExecutor(), update) {
 					@Override
 					public void handleCompleted() {
 						if (!isSuccess()) {
 							handleFailedUpdate(update);
 							return;
 						}
-
-						IExecutionDMContext[] execDmcs = getData();
-						if (execDmcs != null) {
-							// Extract the processes since there can be threads or groups in the answer
-							List<IContainerDMContext> processes = new ArrayList<>();
-							for (IExecutionDMContext exec : execDmcs) {
-								if (exec instanceof IContainerDMContext && !(exec instanceof IGroupDMContext)) {
-									processes.add((IContainerDMContext) exec);
-								}
-							}
-							fillUpdateWithVMCs(update, processes.toArray(new IContainerDMContext[processes.size()]));
-						}
+						if (getData() != null)
+							fillUpdateWithVMCs(update, getData());
 						update.done();
 					}
 				});
@@ -327,22 +306,22 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 		for (int i = 0; i < updates.length; i++) {
 			final IPropertiesUpdate update = updates[i];
 
-			final ViewerCountingRequestMonitor countingRm = new ViewerCountingRequestMonitor(
-					ImmediateExecutor.getInstance(), update);
+			final ViewerCountingRequestMonitor countringRm = new ViewerCountingRequestMonitor(
+					ImmediateExecutor.getInstance(), updates[i]);
 			int count = 0;
 
 			// Create a delegating update which will let the super-class fill in the
 			// standard container properties.
-			parentUpdates[i] = new VMDelegatingPropertiesUpdate(update, countingRm);
+			parentUpdates[i] = new VMDelegatingPropertiesUpdate(updates[i], countringRm);
 			count++;
 
 			// set pin properties
 			IDMContext dmc = findDmcInPath(update.getViewerInput(), update.getElementPath(), IDMContext.class);
 			IPinElementColorDescriptor colorDesc = PinCloneUtils
 					.getPinElementColorDescriptor(GdbPinProvider.getPinnedHandles(), dmc);
-			update.setProperty(IGdbLaunchVMConstants.PROP_PIN_COLOR,
+			updates[i].setProperty(IGdbLaunchVMConstants.PROP_PIN_COLOR,
 					colorDesc != null ? colorDesc.getOverlayColor() : null);
-			update.setProperty(IGdbLaunchVMConstants.PROP_PINNED_CONTEXT,
+			updates[i].setProperty(IGdbLaunchVMConstants.PROP_PINNED_CONTEXT,
 					PinCloneUtils.isPinnedTo(GdbPinProvider.getPinnedHandles(), dmc));
 
 			if (update.getProperties().contains(PROP_NAME)
@@ -367,7 +346,7 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 									} else {
 										update.setStatus(getStatus());
 									}
-									countingRm.done();
+									countringRm.done();
 								}
 							});
 					count++;
@@ -375,11 +354,11 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 			}
 
 			if (update.getProperties().contains(IGdbLaunchVMConstants.PROP_THREAD_SUMMARY)) {
-				fillThreadSummary(update, countingRm);
+				fillThreadSummary(update, countringRm);
 				count++;
 			}
 
-			countingRm.setDoneCount(count);
+			countringRm.setDoneCount(count);
 		}
 
 		super.updatePropertiesInSessionThread(parentUpdates);
@@ -429,53 +408,43 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 			rm.done();
 			return;
 		}
-		final IRunControl runControl = getServicesTracker().getService(IRunControl.class);
-		final IContainerDMContext contDmc = findDmcInPath(update.getViewerInput(), update.getElementPath(),
+
+		IProcesses processService = getServicesTracker().getService(IProcesses.class);
+		final IContainerDMContext procDmc = findDmcInPath(update.getViewerInput(), update.getElementPath(),
 				IContainerDMContext.class);
-		if (runControl == null || contDmc == null) {
+
+		if (processService == null || procDmc == null) {
 			update.setStatus(new Status(IStatus.ERROR, GdbUIPlugin.PLUGIN_ID, IDsfStatusConstants.INVALID_HANDLE,
 					"Service or handle invalid", null)); //$NON-NLS-1$
-			return;
-		}
+		} else {
+			// Fetch all the threads
+			processService.getProcessesBeingDebugged(procDmc,
+					new ViewerDataRequestMonitor<IDMContext[]>(getSession().getExecutor(), update) {
+						@Override
+						public void handleCompleted() {
+							IRunControl runControl = getServicesTracker().getService(IRunControl.class);
+							if (!isSuccess() || !(getData() instanceof IExecutionDMContext[]) || runControl == null) {
+								update.setStatus(new Status(IStatus.ERROR, GdbUIPlugin.PLUGIN_ID,
+										IDsfStatusConstants.INVALID_HANDLE, "Unable to get threads summary", null)); //$NON-NLS-1$
+								rm.done();
+								return;
+							}
 
-		// Fetch all the threads
-		runControl.getExecutionContexts(contDmc,
-				new ViewerDataRequestMonitor<IExecutionDMContext[]>(getSession().getExecutor(), update) {
-					@Override
-					public void handleCompleted() {
-						if (!isSuccess()) {
-							update.setStatus(new Status(IStatus.ERROR, GdbUIPlugin.PLUGIN_ID,
-									IDsfStatusConstants.INVALID_HANDLE, "Unable to get threads summary", null)); //$NON-NLS-1$
+							// For each thread, count how many are running and therefore hidden
+							// Remove running threads from the list
+							int runningCount = 0;
+							for (IExecutionDMContext execDmc : (IExecutionDMContext[]) getData()) {
+								// Keep suspended or stepping threads
+								if (!runControl.isSuspended(execDmc) && !runControl.isStepping(execDmc)) {
+									runningCount++;
+								}
+							}
+							update.setProperty(IGdbLaunchVMConstants.PROP_THREAD_SUMMARY, String.format("(%d %s)", //$NON-NLS-1$
+									runningCount, MessagesForGdbLaunchVM.ContainerVMNode_filtered_running_threads));
 							rm.done();
-							return;
 						}
-
-						IExecutionDMContext[] execDmcs = getData();
-
-						// Extract the threads by removing any container
-						Vector<IExecutionDMContext> threadDmcs = new Vector<>();
-						for (IExecutionDMContext exec : execDmcs) {
-							if (!(exec instanceof IContainerDMContext)) {
-								threadDmcs.add(exec);
-							}
-						}
-						execDmcs = threadDmcs.toArray(new IExecutionDMContext[threadDmcs.size()]);
-
-						// For each thread, count how many are running and therefore hidden
-						// Remove running threads from the list
-						int runningCount = 0;
-						for (IExecutionDMContext execDmc : execDmcs) {
-							// Keep suspended or stepping threads
-							if (!runControl.isSuspended(execDmc) && !runControl.isStepping(execDmc)) {
-								runningCount++;
-							}
-						}
-						update.setProperty(IGdbLaunchVMConstants.PROP_THREAD_SUMMARY, String.format("(%d %s)", //$NON-NLS-1$
-								runningCount, MessagesForGdbLaunchVM.ContainerVMNode_filtered_running_threads));
-						rm.done();
-					}
-				});
-
+					});
+		}
 	}
 
 	@Override
@@ -496,10 +465,10 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 	@Override
 	public void buildDelta(Object e, final VMDelta parentDelta, final int nodeOffset,
 			final RequestMonitor requestMonitor) {
-		IDMContext dmc = e instanceof IDMEvent<?> ? ((IDMEvent<?>) e).getDMContext() : null;
 		if (e instanceof ICommandControlShutdownDMEvent) {
 			parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
 		} else if (e instanceof IThreadRemovedDMEvent) {
+			IDMContext dmc = e instanceof IDMEvent<?> ? ((IDMEvent<?>) e).getDMContext() : null;
 			if (dmc instanceof IProcessDMContext) {
 				// A process was removed, refresh the parent
 				parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
@@ -618,50 +587,4 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 			request.done();
 		}
 	}
-
-	private void isGroupingEnabled(final DataRequestMonitor<Boolean> rm) {
-		final DsfServicesTracker tracker = getServicesTracker();
-		if (tracker != null) {
-			IGDBGrouping groupingService = tracker.getService(IGDBGrouping.class);
-			if (groupingService == null) {
-				rm.setData(false);
-				rm.done();
-				return;
-			}
-
-			groupingService.isGroupingEnabled(new DataRequestMonitor<Boolean>(getExecutor(), rm) {
-				@Override
-				public void handleCompleted() {
-					if (isSuccess()) {
-						rm.done(getData());
-						return;
-					}
-					rm.done(false);
-				}
-			});
-		}
-	}
-
-	private IExecutionDMContext getExecDMContextFromVMContext(IVMContext ctx) {
-		if (ctx instanceof DMVMContext) {
-			IDMContext dmc = ((IDMVMContext) ctx).getDMContext();
-			if (dmc != null && dmc instanceof IExecutionDMContext) {
-				return (IExecutionDMContext) dmc;
-			}
-		}
-		return null;
-	}
-
-	private IExecutionDMContext[] translateIVMCtxArrayToExecCtxArray(IVMContext[] input) {
-		List<IExecutionDMContext> out = new ArrayList<>();
-
-		for (IVMContext ctx : input) {
-			IExecutionDMContext exec = getExecDMContextFromVMContext(ctx);
-			if (exec != null) {
-				out.add(exec);
-			}
-		}
-		return out.toArray(new IExecutionDMContext[out.size()]);
-	}
-
 }

@@ -80,12 +80,7 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 	private IElementLabelProvider fLabelProvider;
 
 	public AbstractContainerVMNode(AbstractDMVMProvider provider, DsfSession session) {
-		this(provider, session, IRunControl.IContainerDMContext.class);
-	}
-
-	public AbstractContainerVMNode(AbstractDMVMProvider provider, DsfSession session,
-			Class<? extends IDMContext> dmcClassType) {
-		super(provider, session, dmcClassType);
+		super(provider, session, IRunControl.IContainerDMContext.class);
 		fLabelProvider = createLabelProvider();
 	}
 
@@ -178,11 +173,6 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 						@Override
 						protected void handleSuccess() {
 							fillExecutionDataProperties(update, getData());
-							update.done();
-						}
-
-						@Override
-						protected void handleFailure() {
 							update.done();
 						}
 					});
@@ -334,12 +324,13 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 
 		if (e instanceof IContainerResumedDMEvent) {
 			// Container resumed:
-			// - If not stepping, update everything under the parent node
+			// - If not stepping, update the container and the execution
+			// contexts under it.
 			// - If stepping, do nothing to avoid too many updates.  If a
 			// time-out is reached before the step completes, the
 			// ISteppingTimedOutEvent will trigger a full refresh.
 			if (((IContainerResumedDMEvent) e).getReason() != IRunControl.StateChangeReason.STEP) {
-				parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
+				parentDelta.addNode(createVMContext(((IDMEvent<?>) e).getDMContext()), IModelDelta.CONTENT);
 			}
 		} else if (e instanceof IContainerSuspendedDMEvent) {
 			// Container suspended.  Do nothing here to give the stack the
@@ -352,7 +343,7 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 			// If the step was issued for the whole container refresh
 			// the whole container.
 			if (dmc instanceof IContainerDMContext) {
-				parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
+				parentDelta.addNode(createVMContext(dmc), IModelDelta.CONTENT);
 			}
 		} else if (e instanceof IExitedDMEvent) {
 			// An exited event could either be for a thread within a container
@@ -363,10 +354,6 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 			if (dmc instanceof IContainerDMContext) {
 				parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
 			} else {
-				// The grouping service will send a GroupModifiedEvent, for each group
-				// that was affected by the exited thread. So we do not need to take care
-				// of them. Just refresh the container of the exited thread
-
 				IContainerDMContext containerCtx = DMContexts.getAncestorOfType(dmc, IContainerDMContext.class);
 				if (containerCtx != null) {
 					parentDelta.addNode(createVMContext(containerCtx), IModelDelta.CONTENT);
@@ -375,7 +362,8 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 		} else if (e instanceof IStartedDMEvent) {
 			// A started event could either be for a thread within a container
 			// or for the container itself.
-			// If a container started, expand and select it
+			// If a container started, issue an expand and select event to
+			// show the threads in the new container.
 			// Note: the EXPAND flag implies refreshing the parent element.
 			if (dmc instanceof IContainerDMContext) {
 				parentDelta.addNode(createVMContext(dmc), IModelDelta.EXPAND | IModelDelta.SELECT);
@@ -408,9 +396,8 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 			return;
 		} else if (e instanceof StateChangedEvent) {
 			// If there is a state change needed on the container, update the container
-			if (dmc instanceof IContainerDMContext) {
+			if (dmc instanceof IContainerDMContext)
 				parentDelta.addNode(createVMContext(dmc), IModelDelta.STATE);
-			}
 		} else if (e instanceof FullStackRefreshEvent) {
 			FullStackRefreshEvent refreshEvent = (FullStackRefreshEvent) e;
 			if (refreshEvent.getTriggeringEvent() instanceof IContainerSuspendedDMEvent) {
@@ -469,11 +456,7 @@ public abstract class AbstractContainerVMNode extends AbstractExecutionContextVM
 						}
 					}
 					if (!isStepping) {
-						// in all-stop mode we can't precisely update just the containers/groups that suspended,
-						// so update all children of parent node.
-						parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
-					} else {
-						System.out.println("stepping..."); //$NON-NLS-1$
+						parentDelta.addNode(createVMContext(containerCtx), IModelDelta.CONTENT);
 					}
 
 					rm.done();

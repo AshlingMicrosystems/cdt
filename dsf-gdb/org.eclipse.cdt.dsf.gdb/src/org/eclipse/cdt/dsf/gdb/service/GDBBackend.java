@@ -37,6 +37,7 @@ import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
 import org.eclipse.cdt.dsf.concurrent.ImmediateRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
+import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
 import org.eclipse.cdt.dsf.gdb.launching.LaunchUtils;
@@ -55,6 +56,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.DebugException;
@@ -177,7 +179,9 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend, IMIBa
 	 * array. Allow subclass to override.
 	 *
 	 * @since 4.6
+	 * @deprecated Override {@link #getDebuggerCommandLineArray()} instead
 	 */
+	@Deprecated(since = "5.2", forRemoval = true)
 	protected String[] getGDBCommandLineArray() {
 		// The goal here is to keep options to an absolute minimum.
 		// All configuration should be done in the final launch sequence
@@ -205,6 +209,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend, IMIBa
 	 * Returns the GDB command and its arguments as an array.
 	 * Allow subclass to override.
 	 * @since 5.2
+	 * @deprecated Override {@link #getDebuggerCommandLineArray()} instead
 	 */
 	// This method replaces getGDBCommandLineArray() because we need
 	// to override it for GDB 7.12 even if an extender has overridden
@@ -229,7 +234,7 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend, IMIBa
 	// Note that we didn't name this method getGDBCommandLine() because
 	// this name had been used in CDT 8.8 and could still be part of
 	// extenders' code.
-
+	@Deprecated(since = "6.4", forRemoval = true)
 	protected String[] getDebuggerCommandLine() {
 		// Call the old method in case it was overridden
 		return getGDBCommandLineArray();
@@ -815,17 +820,15 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend, IMIBa
 	 * backend, and the current job will indicate this in the request monitor.
 	 *
 	 * The specified timeout is used to indicate how many milliseconds this job
-	 * should wait for. INTERRUPT_TIMEOUT_DEFAULT indicates to use the default
-	 * of 5 seconds. The default is also use if the timeout value is 0 or
+	 * should wait for. Default timeout is provided by preference
+	 * {@code IGdbDebugPreferenceConstants.PREF_SUSPEND_TIMEOUT_VALUE}.
+	 * The default is also used if the timeout value is 0 or
 	 * negative.
 	 *
 	 * @since 3.0
 	 */
 	protected class MonitorInterruptJob extends Job {
-		// Bug 310274. Until we have a preference to configure timeouts,
-		// we need a large enough default timeout to accommodate slow
-		// remote sessions.
-		private final static int TIMEOUT_DEFAULT_VALUE = 5000;
+
 		private final RequestMonitor fRequestMonitor;
 
 		public MonitorInterruptJob(int timeout, RequestMonitor rm) {
@@ -834,7 +837,9 @@ public class GDBBackend extends AbstractDsfService implements IGDBBackend, IMIBa
 			fRequestMonitor = rm;
 
 			if (timeout == INTERRUPT_TIMEOUT_DEFAULT || timeout <= 0) {
-				timeout = TIMEOUT_DEFAULT_VALUE; // default of 5 seconds
+				timeout = 1000 * Platform.getPreferencesService().getInt(GdbPlugin.PLUGIN_ID,
+						IGdbDebugPreferenceConstants.PREF_SUSPEND_TIMEOUT_VALUE,
+						IGdbDebugPreferenceConstants.SUSPEND_TIMEOUT_VALUE_DEFAULT, null);
 			}
 
 			schedule(timeout);

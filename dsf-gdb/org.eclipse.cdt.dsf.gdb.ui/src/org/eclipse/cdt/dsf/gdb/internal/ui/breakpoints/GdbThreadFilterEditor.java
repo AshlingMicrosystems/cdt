@@ -11,7 +11,6 @@
  * Contributors:
  * QNX Software Systems - Initial API and implementation
  * Marc Khouzam (Ericsson) - Check for a null threadId (Bug 356463)
- * Ashling
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.breakpoints;
 
@@ -63,8 +62,6 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
-
-import com.ashling.riscfree.debug.multicore.model.IMulticoreLaunch;
 
 public class GdbThreadFilterEditor {
 
@@ -152,12 +149,6 @@ public class GdbThreadFilterEditor {
 						targetArray = syncGetContainers((GdbLaunch) launches[i]);
 						children.addAll(Arrays.asList(targetArray));
 					}
-					//<CUSTOMISATION-ASHLING> BP filter not working for multicore launch git-lab#509
-					if (launches[i] instanceof IMulticoreLaunch) {
-						targetArray = syncGetContainers((IMulticoreLaunch) launches[i]);
-						children.addAll(Arrays.asList(targetArray));
-					}
-					//<CUSTOMISATION>
 				}
 				return children.toArray();
 			}
@@ -293,12 +284,6 @@ public class GdbThreadFilterEditor {
 				targetArray = syncGetContainers((GdbLaunch) launches[i]);
 				targets.addAll(Arrays.asList(targetArray));
 			}
-			//<CUSTOMISATION-ASHLING> BP filter not working for multicore launch git-lab#509
-			else if (launches[i] instanceof IMulticoreLaunch) {
-				targetArray = syncGetContainers((IMulticoreLaunch) launches[i]);
-				targets.addAll(Arrays.asList(targetArray));
-			}
-			// </CUSTOMISATION>
 		}
 		return targets.toArray(new IContainerDMContext[targets.size()]);
 	}
@@ -416,59 +401,6 @@ public class GdbThreadFilterEditor {
 		}
 		return new IContainerDMContext[0];
 	}
-
-	//<CUSTOMISATION-ASHLING> BP filter not working for multicore launch git-lab#509
-	private IContainerDMContext[] syncGetContainers(final IMulticoreLaunch launch) {
-		final DsfSession session = launch.getSession();
-
-		class ContainerQuery extends Query<IContainerDMContext[]> {
-			@Override
-			protected void execute(final DataRequestMonitor<IContainerDMContext[]> rm) {
-				if (!session.isActive()) {
-					rm.setStatus(getFailStatus(IDsfStatusConstants.INVALID_STATE, "Launch's session not active.")); //$NON-NLS-1$
-					rm.done();
-					return;
-				}
-
-				DsfServicesTracker tracker = new DsfServicesTracker(GdbUIPlugin.getBundleContext(), session.getId());
-				ICommandControlService commandControl = tracker.getService(ICommandControlService.class);
-				IMIProcesses procService = tracker.getService(IMIProcesses.class);
-
-				if (commandControl != null && procService != null) {
-					procService.getProcessesBeingDebugged(commandControl.getContext(),
-							new DataRequestMonitor<IDMContext[]>(session.getExecutor(), rm) {
-								@Override
-								protected void handleSuccess() {
-									if (getData() instanceof IContainerDMContext[]) {
-										IContainerDMContext[] containerDmcs = (IContainerDMContext[]) getData();
-										rm.setData(containerDmcs);
-									} else {
-										rm.setStatus(getFailStatus(IDsfStatusConstants.INVALID_STATE,
-												"Wrong type of container contexts.")); //$NON-NLS-1$
-									}
-									rm.done();
-								}
-							});
-				} else {
-					rm.setStatus(getFailStatus(IDsfStatusConstants.INVALID_STATE,
-							"GDB Control or Process service not accessible.")); //$NON-NLS-1$
-					rm.done();
-				}
-				tracker.dispose();
-			}
-		}
-
-		ContainerQuery query = new ContainerQuery();
-		try {
-			session.getExecutor().execute(query);
-			return query.get();
-		} catch (RejectedExecutionException e) {
-		} catch (InterruptedException e) {
-		} catch (ExecutionException e) {
-		}
-		return new IContainerDMContext[0];
-	}
-	//</CUSTOMISATION>
 
 	private IExecutionDMContext[] syncGetThreads(final IContainerDMContext container) {
 		final DsfSession session = DsfSession.getSession(container.getSessionId());

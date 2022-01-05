@@ -221,7 +221,7 @@ public class DebugNewProcessSequence extends ReflectionSequence {
 		}
 
 		final String[] finalArgArray = argArray;
-		ImmediateDataRequestMonitor<MIInfo> setArgsRm = new ImmediateDataRequestMonitor<MIInfo>(rm) {
+		ImmediateDataRequestMonitor<MIInfo> setArgsRm = new ImmediateDataRequestMonitor<>(rm) {
 			@Override
 			protected void handleSuccess() {
 				if (finalArgArray != null) {

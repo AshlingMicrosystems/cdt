@@ -3,15 +3,15 @@
 ################################################################################
 
 # Add inputs and outputs from these tool invocations to the build variables 
+COP_SRCS += \
+../TestATO.cop 
+
 C_SRCS += \
 ../TestATO.c 
 
 OPT_SRCS += \
 ../TestATO1.opt \
 ../TestATO2.opt 
-
-COP_SRCS += \
-../TestATO.cop 
 
 OBJS += \
 ./TestATO.obj 
@@ -25,4 +25,11 @@ OBJS += \
 	@echo 'Finished building: $<'
 	@echo ' '
 
+
+clean: clean--2e-
+
+clean--2e-:
+	-$(RM) ./TestATO.obj
+
+.PHONY: clean--2e-
 

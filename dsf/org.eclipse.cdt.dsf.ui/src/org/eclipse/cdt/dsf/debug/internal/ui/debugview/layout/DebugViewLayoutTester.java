@@ -13,12 +13,9 @@
 ********************************************************************************/
 package org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout;
 
-import org.eclipse.cdt.dsf.debug.ui.IDsfDebugUIConstants;
-import org.eclipse.cdt.dsf.internal.ui.DsfUIPlugin;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext;
 import org.eclipse.core.expressions.PropertyTester;
-import org.eclipse.core.runtime.Platform;
 
 /**
  * Property tester for debug view related commands - group, ungroup, hide, etc.
@@ -36,11 +33,8 @@ public class DebugViewLayoutTester extends PropertyTester {
 
 	@Override
 	public boolean test(Object receiver, String property, Object[] args, Object expectedValue) {
-		//<CUSTOMISATION - ASHLING> Show the group commands only for some products based on the preference
-		boolean showGroupCommands = Platform.getPreferencesService().getBoolean(DsfUIPlugin.PLUGIN_ID,
-				IDsfDebugUIConstants.PREF_GROUP_CMDS_ENABLE, false, null);
-		//<CUSTOMISATION>
-		if (showGroupCommands && (IS_GROUP_VISIBLE.equals(property) || IS_UNGROUP_VISIBLE.equals(property))) {
+
+		if (IS_GROUP_VISIBLE.equals(property) || IS_UNGROUP_VISIBLE.equals(property)) {
 			if (receiver instanceof IDMVMContext) {
 				return test((IDMVMContext) receiver);
 			}

@@ -30,7 +30,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.core.model.IFunctionDeclaration;
@@ -57,7 +56,6 @@ import org.eclipse.cdt.dsf.debug.service.IBreakpoints.IBreakpointsTargetDMContex
 import org.eclipse.cdt.dsf.debug.service.IBreakpointsExtension.IBreakpointHitDMEvent;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
 import org.eclipse.cdt.dsf.debug.service.IMultiRunControl;
-import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IThreadDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
@@ -69,11 +67,11 @@ import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommand;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
+import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
 import org.eclipse.cdt.dsf.gdb.internal.service.command.events.MITracepointSelectedEvent;
 import org.eclipse.cdt.dsf.gdb.internal.service.control.StepIntoSelectionActiveOperation;
 import org.eclipse.cdt.dsf.gdb.internal.service.control.StepIntoSelectionUtils;
-import org.eclipse.cdt.dsf.gdb.service.IGDBGrouping.IGroupDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIBreakpointPathAdjuster;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
@@ -112,6 +110,7 @@ import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.debug.core.DebugException;
@@ -489,13 +488,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 
 	@Override
 	public boolean isSuspended(IExecutionDMContext context) {
-		// Group case
-		if (context instanceof IGroupDMContext) {
-			// Need to check all children through an async call
-			// We should make this method async for that
-			// until then return true TODO
-			return true;
-		}
+
 		// Thread case
 		if (context instanceof IMIExecutionDMContext) {
 			MIThreadRunState threadState = fThreadRunStates.get(context);
@@ -529,87 +522,14 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 			rm.done(false);
 			return;
 		}
-		if (context instanceof IGroupDMContext) {
-			canSuspendGroup((IGroupDMContext) context, rm);
-		} else {
-			rm.done(doCanSuspend(context));
-		}
+
+		rm.done(doCanSuspend(context));
 	}
-
-	/** @since 5.1*/
-	protected void canSuspendGroup(IGroupDMContext group, final DataRequestMonitor<Boolean> rm) {
-		// Check if any of the children of the group can be suspended
-		getUniqueBaseContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>() {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
-
-				// If any of the threads or processes can be suspended, we allow
-				// the user to suspend the group.
-				for (IExecutionDMContext baseDmc : getData()) {
-					if (doCanSuspend(baseDmc)) {
-						rm.done(true);
-						return;
-					}
-				}
-
-				// Didn't find anything that could be suspended
-				// so the group can't be suspended either
-				rm.done(false);
-			}
-		});
-	}
-
-	//<CUSTOMISATION - ASHLING> Method to check whether the step operations can be enabled on a group context.
-	/** @since 5.1*/
-	protected void canStepGroup(IGroupDMContext group, StepType stepType, final DataRequestMonitor<Boolean> rm) {
-		// Check if any of the children of the group can be suspended
-		getUniqueBaseContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>() {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
-				IExecutionDMContext[] execContexts = getData();
-				AtomicBoolean canStepAny = new AtomicBoolean();
-				CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm) {
-					@Override
-					protected void handleCompleted() {
-						if (canStepAny.get()) {
-							rm.done(true);
-						} else {
-							rm.done(false);
-						}
-					}
-				};
-				// If any of the threads or processes can be stepped, we allow
-				// the user to step the group.
-				for (IExecutionDMContext baseDmc : execContexts) {
-					canStep(baseDmc, stepType, new DataRequestMonitor<Boolean>(getExecutor(), crm) {
-						@Override
-						protected void handleSuccess() {
-							if (getData()) {
-								canStepAny.set(true);
-							}
-							crm.done();
-						}
-					});
-				}
-				crm.setDoneCount(execContexts.length);
-			}
-		});
-	}
-	//<CUSTOMISATION>
 
 	/**
 	 * @since 4.5
 	 */
 	protected boolean doCanSuspend(IExecutionDMContext context) {
-		assert !(context instanceof IGroupDMContext);
 		// Thread case
 		if (context instanceof IMIExecutionDMContext) {
 			MIThreadRunState threadState = fThreadRunStates.get(context);
@@ -633,7 +553,7 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	}
 
 	@Override
-	public void suspend(IExecutionDMContext context, RequestMonitor rm) {
+	public void suspend(IExecutionDMContext context, final RequestMonitor rm) {
 
 		assert context != null;
 
@@ -651,15 +571,9 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 			return;
 		}
 
-		// Group case
-		IGroupDMContext group = DMContexts.getAncestorOfType(context, IGroupDMContext.class);
-		if (group != null) {
-			doSuspend(group, rm);
-			return;
-		}
-
 		// Default case
-		rm.done(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, NOT_SUPPORTED, "Invalid context type.", null)); //$NON-NLS-1$
+		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, NOT_SUPPORTED, "Invalid context type.", null)); //$NON-NLS-1$
+		rm.done();
 	}
 
 	/**
@@ -715,22 +629,6 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	}
 
 	/**
-	 * Request the suspend for a group.
-	 */
-	private void doSuspend(IGroupDMContext group, final RequestMonitor rm) {
-		getUniqueBaseContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleSuccess() {
-				final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
-				crm.setDoneCount(getData().length);
-				for (IExecutionDMContext baseDmc : getData()) {
-					suspend(baseDmc, crm);
-				}
-			}
-		});
-	}
-
-	/**
 	 * Job that waits for a *stopped event after a suspend operation on a thread.
 	 *
 	 * If the suspend operation receives its corresponding *stopped event in time,
@@ -740,10 +638,6 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	 * @since 4.5
 	 */
 	protected class MonitorSuspendJob extends Job {
-		// Bug 310274.  Until we have a preference to configure timeouts,
-		// we need a large enough default timeout to accommodate slow
-		// remote sessions.
-		private final static int TIMEOUT_DEFAULT_VALUE = 5000;
 
 		private final RequestMonitor fRequestMonitor;
 		private final IMIExecutionDMContext fThread;
@@ -755,7 +649,9 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 			fRequestMonitor = rm;
 
 			if (timeout <= 0) {
-				timeout = TIMEOUT_DEFAULT_VALUE; // default of 5 seconds
+				timeout = 1000 * Platform.getPreferencesService().getInt(GdbPlugin.PLUGIN_ID,
+						IGdbDebugPreferenceConstants.PREF_SUSPEND_TIMEOUT_VALUE,
+						IGdbDebugPreferenceConstants.SUSPEND_TIMEOUT_VALUE_DEFAULT, null);
 			}
 
 			// Register to listen for the stopped event
@@ -818,43 +714,12 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 			rm.done(false);
 			return;
 		}
-		if (context instanceof IGroupDMContext) {
-			canResumeGroup((IGroupDMContext) context, rm);
-		} else {
-			rm.done(doCanResume(context));
-		}
-	}
 
-	/** @since 5.1*/
-	protected void canResumeGroup(IGroupDMContext group, final DataRequestMonitor<Boolean> rm) {
-		// Check if any of the children of the group can be resumed
-		getUniqueBaseContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>() {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
-
-				// If any of the threads or processes can be resumed, we allow
-				// the user to resume the group.
-				for (IExecutionDMContext baseDmc : getData()) {
-					if (doCanResume(baseDmc)) {
-						rm.done(true);
-						return;
-					}
-				}
-
-				// Didn't find anything that could be resumed
-				// so the group can't be resumed either
-				rm.done(false);
-			}
-		});
+		rm.done(doCanResume(context));
 	}
 
 	/** @since 5.0 */
 	protected boolean doCanResume(IExecutionDMContext context) {
-		assert !(context instanceof IGroupDMContext);
 		// Thread case
 		if (context instanceof IMIExecutionDMContext) {
 			MIThreadRunState threadState = fThreadRunStates.get(context);
@@ -897,29 +762,24 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 			return;
 		}
 
-		// Group case
-		IGroupDMContext group = DMContexts.getAncestorOfType(context, IGroupDMContext.class);
-		if (group != null) {
-			doResume(group, rm);
-			return;
-		}
 		// Default case
-		rm.done(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, NOT_SUPPORTED, "Invalid context type.", null)); //$NON-NLS-1$
+		rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, NOT_SUPPORTED, "Invalid context type.", null)); //$NON-NLS-1$
+		rm.done();
 	}
 
 	private void doResume(IMIExecutionDMContext context, final RequestMonitor rm) {
 		if (!doCanResume(context)) {
-			rm.done(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
 					"Given context: " + context + ", is already running.", null)); //$NON-NLS-1$ //$NON-NLS-2$
-			//<CUSTOMISATION - ASHLING> Removed additional call to Requestmonitor done method
-			//which will raise IllegalState exception
+			rm.done();
 			return;
 		}
 
 		final MIThreadRunState threadState = fThreadRunStates.get(context);
 		if (threadState == null) {
-			rm.done(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
 					"Given context: " + context + " can't be found.", null)); //$NON-NLS-1$ //$NON-NLS-2$
+			rm.done();
 			return;
 		}
 
@@ -937,30 +797,15 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	/** @since 5.0 */
 	protected void doResume(IMIContainerDMContext context, final RequestMonitor rm) {
 		if (!doCanResume(context)) {
-			rm.done(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
+			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_STATE,
 					"Given context: " + context + ", is already running.", null)); //$NON-NLS-1$ //$NON-NLS-2$
+			rm.done();
 			return;
 		}
 
 		String groupId = context.getGroupId();
 		fConnection.queueCommand(fCommandFactory.createMIExecContinue(context, groupId),
 				new DataRequestMonitor<MIInfo>(getExecutor(), rm));
-	}
-
-	/**
-	 * Request the resume for a group.
-	 */
-	private void doResume(IGroupDMContext group, final RequestMonitor rm) {
-		getUniqueBaseContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleSuccess() {
-				final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
-				crm.setDoneCount(getData().length);
-				for (IExecutionDMContext baseDmc : getData()) {
-					resume(baseDmc, crm);
-				}
-			}
-		});
 	}
 
 	// ------------------------------------------------------------------------
@@ -980,67 +825,15 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 		return false;
 	}
 
-	/**
-	 * Returns the base contexts contained in this group.  Those contexts can be threads or processes.
-	 * Each different thread is only returned once.
-	 * If a process is part of the group, it's own threads are not explicitly returned even if they
-	 * are directly part of the group also.
-	 * @since 5.1
-	 */
-	protected void getUniqueBaseContexts(IGroupDMContext group, final DataRequestMonitor<IExecutionDMContext[]> rm) {
-		final List<IExecutionDMContext> baseContexts = new ArrayList<>();
-		getExecutionContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleSuccess() {
-				final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm) {
-					@Override
-					protected void handleSuccess() {
-						IExecutionDMContext[] uniqueContexts = removeDuplicatesForOperation(
-								baseContexts.toArray(new IExecutionDMContext[baseContexts.size()]));
-						rm.done(uniqueContexts);
-					}
-				};
-
-				int count = 0;
-				for (IExecutionDMContext context : getData()) {
-					// recursively resolve sub-group(s) content
-					if (context instanceof IGroupDMContext) {
-						count++;
-						getUniqueBaseContexts((IGroupDMContext) context,
-								new ImmediateDataRequestMonitor<IExecutionDMContext[]>(crm) {
-									@Override
-									protected void handleSuccess() {
-										for (IExecutionDMContext context : getData()) {
-											assert !(context instanceof IGroupDMContext);
-											baseContexts.add(context);
-										}
-										crm.done();
-									}
-								});
-					} else {
-						baseContexts.add(context);
-					}
-				}
-				crm.setDoneCount(count);
-			}
-		});
-	}
-
 	@Override
 	public void canStep(final IExecutionDMContext context, StepType stepType, final DataRequestMonitor<Boolean> rm) {
 		if (fRunControlOperationsEnabled == false) {
 			rm.done(false);
 			return;
 		}
-		//<CUSTOMISATION - ASHLING> Handle Group context separately.
-		if (context instanceof IGroupDMContext) {
-			canStepGroup((IGroupDMContext) context, stepType, rm);
-			return;
-		}
-		//<CUSTOMISATION
-		else if (context instanceof IMIExecutionDMContext) {
-			// If it's a thread, just look it up
 
+		// If it's a thread, just look it up
+		if (context instanceof IMIExecutionDMContext) {
 			if (stepType == StepType.STEP_RETURN) {
 				// A step return will always be done in the top stack frame.
 				// If the top stack frame is the only stack frame, it does not make sense
@@ -1072,35 +865,11 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 
 	@Override
 	public void step(IExecutionDMContext context, StepType stepType, final RequestMonitor rm) {
-		//<CUSTOMISATION - ASHLING> Handle Group context separately.
-		if (context instanceof IGroupDMContext) {
-			stepGroup((IGroupDMContext) context, stepType, rm);
-		}
-		//<CUSTOMISATION
-		else {
-			step(context, stepType, true, rm);
-		}
+		step(context, stepType, true, rm);
 	}
-
-	//<CUSTOMISATION - ASHLING> Method to handle step operations on a group
-	/**
-	 * Request the step for a group.
-	 */
-	protected void stepGroup(IGroupDMContext group, StepType stepType, final RequestMonitor rm) {
-		getUniqueBaseContexts(group, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleSuccess() {
-				final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
-				crm.setDoneCount(getData().length);
-				for (IExecutionDMContext baseDmc : getData()) {
-					step(baseDmc, stepType, crm);
-				}
-			}
-		});
-	}
-	//<CUSTOMISATION>
 
 	private void step(IExecutionDMContext context, StepType stepType, boolean checkCanResume, final RequestMonitor rm) {
+
 		assert context != null;
 
 		IMIExecutionDMContext dmc = DMContexts.getAncestorOfType(context, IMIExecutionDMContext.class);
@@ -1367,29 +1136,19 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	@Override
 	public void getExecutionContexts(final IContainerDMContext containerDmc,
 			final DataRequestMonitor<IExecutionDMContext[]> rm) {
-		// user groups support
-		// Delegate to grouping service, if present
-		IGDBGrouping groupService = getServicesTracker().getService(IGDBGrouping.class);
-		if (groupService != null) {
-			groupService.getExecutionContexts(containerDmc, rm);
-			return;
-		}
-		// end user group support
-
-		IProcesses procService = getServicesTracker().getService(IProcesses.class);
-		procService.getProcessesBeingDebugged(containerDmc != null ? containerDmc : fConnection.getContext(),
-				new DataRequestMonitor<IDMContext[]>(getExecutor(), rm) {
-					@Override
-					protected void handleSuccess() {
-						if (getData() instanceof IExecutionDMContext[]) {
-							rm.setData((IExecutionDMContext[]) getData());
-						} else {
-							rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR,
-									"Invalid contexts", null)); //$NON-NLS-1$
-						}
-						rm.done();
-					}
-				});
+		IMIProcesses procService = getServicesTracker().getService(IMIProcesses.class);
+		procService.getProcessesBeingDebugged(containerDmc, new DataRequestMonitor<IDMContext[]>(getExecutor(), rm) {
+			@Override
+			protected void handleSuccess() {
+				if (getData() instanceof IExecutionDMContext[]) {
+					rm.setData((IExecutionDMContext[]) getData());
+				} else {
+					rm.setStatus(
+							new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INTERNAL_ERROR, "Invalid contexts", null)); //$NON-NLS-1$
+				}
+				rm.done();
+			}
+		});
 	}
 
 	@Override
@@ -1829,7 +1588,8 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 
 			// It is important to use an ImmediateExecutor for this RM, to make sure we don't risk getting a new
 			// call to ExecuteWithTargetAvailable() when we just finished executing the steps.
-			fExecuteQueuedOpsStepMonitor = new MultiRequestMonitor<>(ImmediateExecutor.getInstance(), rm) {
+			fExecuteQueuedOpsStepMonitor = new MultiRequestMonitor<RequestMonitor>(ImmediateExecutor.getInstance(),
+					rm) {
 				@Override
 				protected void handleCompleted() {
 					assert fOperationsPending.size() == 0;
@@ -2589,39 +2349,32 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 
 	/** @since 4.1 */
 	@Override
-	public void canResumeSome(IExecutionDMContext[] contexts, final DataRequestMonitor<Boolean> rm) {
+	public void canResumeSome(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
 		assert contexts != null;
 
 		if (fRunControlOperationsEnabled == false) {
 			rm.done(false);
 			return;
 		}
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
 
-				// If any of the threads or processes can be resumed, we allow
-				// the user to perform the operation.
-				for (IExecutionDMContext baseDmc : getData()) {
-					if (doCanResume(baseDmc)) {
-						rm.done(true);
-						return;
-					}
-				}
+		List<IExecutionDMContext> execDmcToResumeList = extractContextsForOperation(contexts);
 
-				// Didn't find anything that could be resumed.
-				rm.done(false);
+		// If any of the threads or processes can be resumed, we allow
+		// the user to perform the operation.
+		for (IExecutionDMContext execDmc : execDmcToResumeList) {
+			if (doCanResume(execDmc)) {
+				rm.done(true);
+				return;
 			}
-		});
+		}
+
+		// Didn't find anything that could be resumed.
+		rm.done(false);
 	}
 
 	/** @since 4.1 */
 	@Override
-	public void canResumeAll(IExecutionDMContext[] contexts, final DataRequestMonitor<Boolean> rm) {
+	public void canResumeAll(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
 		assert contexts != null;
 
 		if (fRunControlOperationsEnabled == false) {
@@ -2629,27 +2382,19 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 			return;
 		}
 
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
+		List<IExecutionDMContext> execDmcToResumeList = extractContextsForOperation(contexts);
 
-				// If any of the threads or processes cannot be resumed, we don't allow
-				// the user to perform the operation.
-				for (IExecutionDMContext execDmc : getData()) {
-					if (!doCanResume(execDmc)) {
-						rm.done(false);
-						return;
-					}
-				}
-
-				// Everything can be resumed
-				rm.done(true);
+		// If any of the threads or processes cannot be resumed, we don't allow
+		// the user to perform the operation.
+		for (IExecutionDMContext execDmc : execDmcToResumeList) {
+			if (!doCanResume(execDmc)) {
+				rm.done(false);
+				return;
 			}
-		});
+		}
+
+		// Everything can be resumed
+		rm.done(true);
 	}
 
 	/**
@@ -2660,25 +2405,23 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	 * @since 4.1
 	 */
 	@Override
-	public void resume(IExecutionDMContext[] contexts, final RequestMonitor rm) {
+	public void resume(IExecutionDMContext[] contexts, RequestMonitor rm) {
 		assert contexts != null;
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleSuccess() {
-				CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
-				int count = 0;
 
-				// Perform resume operation on each thread or process that can be resumed
-				for (IExecutionDMContext execDmc : getData()) {
-					if (doCanResume(execDmc)) {
-						count++;
-						resume(execDmc, crm);
-					}
-				}
+		List<IExecutionDMContext> execDmcToResumeList = extractContextsForOperation(contexts);
 
-				crm.setDoneCount(count);
+		CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
+		int count = 0;
+
+		// Perform resume operation on each thread or process that can be resumed
+		for (IExecutionDMContext execDmc : execDmcToResumeList) {
+			if (doCanResume(execDmc)) {
+				count++;
+				resume(execDmc, crm);
 			}
-		});
+		}
+
+		crm.setDoneCount(count);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -2688,119 +2431,90 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 
 	/** @since 4.1 */
 	@Override
-	public void canSuspendSome(IExecutionDMContext[] contexts, final DataRequestMonitor<Boolean> rm) {
+	public void canSuspendSome(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
 		assert contexts != null;
 
 		if (fRunControlOperationsEnabled == false) {
 			rm.done(false);
 			return;
 		}
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
 
-				// If any of the threads or processes can be suspended, we allow
-				// the user to perform the operation.
-				for (IExecutionDMContext baseDmc : getData()) {
-					if (doCanSuspend(baseDmc)) {
-						rm.done(true);
-						return;
-					}
-				}
+		List<IExecutionDMContext> execDmcToSuspendList = extractContextsForOperation(contexts);
 
-				// Didn't find anything that could be suspended.
-				rm.done(false);
+		// If any of the threads or processes can be suspended, we allow
+		// the user to perform the operation.
+		for (IExecutionDMContext execDmc : execDmcToSuspendList) {
+			if (doCanSuspend(execDmc)) {
+				rm.done(true);
+				return;
 			}
-		});
+		}
+
+		// Didn't find anything that could be suspended.
+		rm.done(false);
 	}
 
 	/** @since 4.1 */
 	@Override
-	public void canSuspendAll(IExecutionDMContext[] contexts, final DataRequestMonitor<Boolean> rm) {
+	public void canSuspendAll(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
 		assert contexts != null;
 
 		if (fRunControlOperationsEnabled == false) {
 			rm.done(false);
 			return;
 		}
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
 
-				// If any of the threads or processes cannot be suspended, we don't allow
-				// the user to perform the operation.
-				for (IExecutionDMContext execDmc : getData()) {
-					if (!doCanSuspend(execDmc)) {
-						rm.done(false);
-						return;
-					}
-				}
+		List<IExecutionDMContext> execDmcToSuspendList = extractContextsForOperation(contexts);
 
-				// Everything can be suspended
-				rm.done(true);
-			}
-		});
-	}
-
-	/** @since 4.1 */
-	@Override
-	public void isSuspendedSome(IExecutionDMContext[] contexts, final DataRequestMonitor<Boolean> rm) {
-		assert contexts != null;
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
-
-				// Look for any thread or process that is suspended
-				for (IExecutionDMContext execDmc : getData()) {
-					if (isSuspended(execDmc)) {
-						rm.done(true);
-						return;
-					}
-				}
-
-				// Didn't find anything that was suspended.
+		// If any of the threads or processes cannot be suspended, we don't allow
+		// the user to perform the operation.
+		for (IExecutionDMContext execDmc : execDmcToSuspendList) {
+			if (!doCanSuspend(execDmc)) {
 				rm.done(false);
+				return;
 			}
-		});
+		}
+
+		// Everything can be suspended
+		rm.done(true);
 	}
 
 	/** @since 4.1 */
 	@Override
-	public void isSuspendedAll(IExecutionDMContext[] contexts, final DataRequestMonitor<Boolean> rm) {
+	public void isSuspendedSome(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
 		assert contexts != null;
 
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleCompleted() {
-				if (!isSuccess()) {
-					rm.done(false);
-					return;
-				}
+		List<IExecutionDMContext> execDmcSuspendedList = extractContextsForOperation(contexts);
 
-				// Look for any thread or process that is not suspended
-				for (IExecutionDMContext execDmc : getData()) {
-					if (!isSuspended(execDmc)) {
-						rm.done(false);
-						return;
-					}
-				}
-
-				// Everything is suspended.
+		// Look for any thread or process that is suspended
+		for (IExecutionDMContext execDmc : execDmcSuspendedList) {
+			if (isSuspended(execDmc)) {
 				rm.done(true);
+				return;
 			}
-		});
+		}
+
+		// Didn't find anything that was suspended.
+		rm.done(false);
+	}
+
+	/** @since 4.1 */
+	@Override
+	public void isSuspendedAll(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm) {
+		assert contexts != null;
+
+		List<IExecutionDMContext> execDmcSuspendedList = extractContextsForOperation(contexts);
+
+		// Look for any thread or process that is not suspended
+		for (IExecutionDMContext execDmc : execDmcSuspendedList) {
+			if (!isSuspended(execDmc)) {
+				rm.done(false);
+				return;
+			}
+		}
+
+		// Everything is suspended.
+		rm.done(true);
 	}
 
 	/**
@@ -2811,26 +2525,23 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	 * @since 4.1
 	 */
 	@Override
-	public void suspend(IExecutionDMContext[] contexts, final RequestMonitor rm) {
+	public void suspend(IExecutionDMContext[] contexts, RequestMonitor rm) {
 		assert contexts != null;
 
-		extractUniqueBaseContextsForOperation(contexts, new ImmediateDataRequestMonitor<IExecutionDMContext[]>(rm) {
-			@Override
-			protected void handleSuccess() {
-				CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
-				int count = 0;
+		List<IExecutionDMContext> execDmcToSuspendList = extractContextsForOperation(contexts);
 
-				// Perform suspend operation on each thread or process that can be suspended
-				for (IExecutionDMContext execDmc : getData()) {
-					if (doCanSuspend(execDmc)) {
-						count++;
-						suspend(execDmc, crm);
-					}
-				}
+		CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm);
+		int count = 0;
 
-				crm.setDoneCount(count);
+		// Perform resume operation on each thread or process that can be resumed
+		for (IExecutionDMContext execDmc : execDmcToSuspendList) {
+			if (doCanSuspend(execDmc)) {
+				count++;
+				suspend(execDmc, crm);
 			}
-		});
+		}
+
+		crm.setDoneCount(count);
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -2873,86 +2584,35 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	}
 
 	/**
-	 * Returns the non-duplicate list of base contexts contained in the 'contexts' parameter.
-	 * Base contexts can be processes or threads, but not groups.
-	 * Each different thread is only returned once.
-	 * If a process is part of the group, it's own threads are not explicitly returned even if they
-	 * are directly part of the group also.
-	 *
-	 * @param List of contexts that must be simplified.  Can contain groups, processes or threads
-	 */
-	private void extractUniqueBaseContextsForOperation(IExecutionDMContext[] contexts,
-			final DataRequestMonitor<IExecutionDMContext[]> rm) {
-
-		final List<IExecutionDMContext> baseContexts = new ArrayList<>(contexts.length);
-
-		final CountingRequestMonitor crm = new CountingRequestMonitor(getExecutor(), rm) {
-			@Override
-			protected void handleSuccess() {
-				IExecutionDMContext[] uniqueContexts = removeDuplicatesForOperation(
-						baseContexts.toArray(new IExecutionDMContext[baseContexts.size()]));
-				rm.done(uniqueContexts);
-			}
-		};
-		int count = 0;
-		for (IExecutionDMContext context : contexts) {
-			if (context instanceof IGroupDMContext) {
-				count++;
-				getUniqueBaseContexts((IGroupDMContext) context,
-						new ImmediateDataRequestMonitor<IExecutionDMContext[]>(crm) {
-							@Override
-							protected void handleSuccess() {
-								for (IExecutionDMContext context : getData()) {
-									assert !(context instanceof IGroupDMContext);
-									baseContexts.add(context);
-								}
-								crm.done();
-							}
-						});
-			} else {
-				baseContexts.add(context);
-			}
-		}
-		crm.setDoneCount(count);
-	}
-
-	/**
 	 * Removes duplicates from the list of execution contexts, in case the same thread
 	 * or process is present more than once.
 	 *
 	 * Also, remove any thread that is part of a process that is also present.  This is
 	 * because an operation on the process will affect all its threads anyway.
-	 *
-	 * This method should not be passed any IGroupDMContext; instead it should be passed
-	 * the processes and threads that are part of the group in question.
 	 */
-	private IExecutionDMContext[] removeDuplicatesForOperation(IExecutionDMContext[] contexts) {
+	private List<IExecutionDMContext> extractContextsForOperation(IExecutionDMContext[] contexts) {
 		// Remove duplicate contexts by using a set
 		Set<IExecutionDMContext> specifiedExedDmcSet = new HashSet<>(Arrays.asList(contexts));
 
 		// A list that ignores threads for which the process is also present
-		List<IExecutionDMContext> execDmcForOperation = new ArrayList<>(specifiedExedDmcSet.size());
+		List<IExecutionDMContext> execDmcForOperationList = new ArrayList<>(specifiedExedDmcSet.size());
+
 		// Check for the case of a process selected along with some of its threads
 		for (IExecutionDMContext execDmc : specifiedExedDmcSet) {
-			if (execDmc instanceof IGroupDMContext) {
-				assert false;
-				continue;
-			}
-
 			if (execDmc instanceof IContainerDMContext) {
 				// This is a process: it is automatically part of our list
-				execDmcForOperation.add(execDmc);
+				execDmcForOperationList.add(execDmc);
 			} else {
 				// Get the process for this thread
 				IContainerDMContext containerDmc = DMContexts.getAncestorOfType(execDmc, IContainerDMContext.class);
 				// Check if that process is also present
 				if (specifiedExedDmcSet.contains(containerDmc) == false) {
 					// This thread does not belong to a process that is selected, so we keep it.
-					execDmcForOperation.add(execDmc);
+					execDmcForOperationList.add(execDmc);
 				}
 			}
 		}
-		return execDmcForOperation.toArray(new IExecutionDMContext[execDmcForOperation.size()]);
+		return execDmcForOperationList;
 	}
 
 	/**

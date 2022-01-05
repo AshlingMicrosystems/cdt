@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: %pluginName
 Bundle-Vendor: %providerName
 Bundle-SymbolicName: org.eclipse.cdt.dsf.gdb;singleton:=true
-Bundle-Version: 6.4.0.qualifier
+Bundle-Version: 6.5.0.qualifier
 Bundle-Activator: org.eclipse.cdt.dsf.gdb.internal.GdbPlugin
 Bundle-Localization: plugin
 Require-Bundle: org.eclipse.core.runtime,
@@ -16,10 +16,8 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.cdt.gdb;bundle-version="7.0.0",
  org.eclipse.core.resources,
  org.eclipse.launchbar.core;bundle-version="2.0.0";visibility:=reexport,
- org.eclipse.cdt.native.serial;bundle-version="1.1.100",
- org.eclipse.debug.ui,
- org.eclipse.swt,
- com.ashling.riscfree.debug.multicore;bundle-version="1.0.0"
+ org.eclipse.cdt.core.native;bundle-version="[6.0.0,7.0.0)",
+ org.eclipse.cdt.native.serial;bundle-version="1.1.100"
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Export-Package: org.eclipse.cdt.dsf.gdb,
@@ -50,5 +48,4 @@ Export-Package: org.eclipse.cdt.dsf.gdb,
  org.eclipse.cdt.dsf.mi.service.command.commands,
  org.eclipse.cdt.dsf.mi.service.command.events,
  org.eclipse.cdt.dsf.mi.service.command.output
-Import-Package: com.ibm.icu.text
 Automatic-Module-Name: org.eclipse.cdt.dsf.gdb

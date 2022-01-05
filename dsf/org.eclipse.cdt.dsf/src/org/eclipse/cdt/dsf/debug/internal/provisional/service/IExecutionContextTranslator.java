@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2010, 2015 Texas Instruments, Inc. and others.
+ * Copyright (c) 2010, 2011 Texas Instruments, Inc. and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -15,7 +15,6 @@ package org.eclipse.cdt.dsf.debug.internal.provisional.service;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
-import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.service.IDsfService;
 
@@ -36,56 +35,34 @@ import org.eclipse.cdt.dsf.service.IDsfService;
 public interface IExecutionContextTranslator extends IDsfService {
 
 	/**
-	 * Returns true if all specified execution contexts can be grouped together.
+	 * returns true if all DM contexts can be grouped into one container.
 	 *
-	 * @param contexts The list of execution contexts to be grouped
-	 * @param rm Contains True if all specified contexts can be grouped together.
-	 *           Contains False otherwise.
+	 * @param context
+	 * @param rm
 	 */
 	void canGroup(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm);
 
 	/**
-	 * Returns true if all specified execution contexts are groups, that can be un-grouped.
+	 * returns true if all DM contexts can be ungrouped.
 	 *
-	 * @param contexts The list of execution contexts to be un-grouped
-	 * @param rm Contains True if all specified contexts can be un-grouped.
-	 *           Contains False otherwise.
+	 * @param context
+	 * @param rm
 	 */
 	void canUngroup(IExecutionDMContext[] contexts, DataRequestMonitor<Boolean> rm);
 
-	//<CUSTOMISATION - ASHLING> Rename function on Group
-	/**
-	 * Returns true the specified context is a group.
-	 *
-	 * @param context The group context which has to renamed
-	 * @param rm Contains True if the context can be renamed.
-	 */
-	void canRename(IExecutionDMContext context, DataRequestMonitor<Boolean> rm);
-	//<CUSTOMISATION>
 	/**
 	 * Groups the specified execution contexts.
 	 *
-	 * @param contexts The list of contexts to group together, into a new group
-	 * @param requestMonitor Returns the group created by the grouping action
-	 * @since 2.7
+	 * @param context
+	 * @param requestMonitor
 	 */
-	void group(IExecutionDMContext[] contexts, DataRequestMonitor<IContainerDMContext> rm);
+	void group(IExecutionDMContext[] contexts, RequestMonitor requestMonitor);
 
 	/**
-	 * Un-groups the specified execution contexts.
+	 * Ungroups the specified execution contexts.
 	 *
-	 * @param contexts The list of groups to un-group
+	 * @param context
+	 * @param requestMonitor
 	 */
-	void ungroup(IExecutionDMContext[] contexts, RequestMonitor rm);
-	
-	//<CUSTOMISATION - ASHLING> Rename function on Group
-	/**
-	 * Rename the specified context
-	 *
-	 * @param context The group context to be renamed.
-	 * @param newGroupName The new goup name.
-	 * @param rm
-	 */
-	void rename(IExecutionDMContext context, String newGroupName, RequestMonitor rm);
-	//<CUSTOMISATION>
+	void ungroup(IExecutionDMContext[] contexts, RequestMonitor requestMonitor);
 }

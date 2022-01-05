@@ -1572,7 +1572,7 @@ public class MIBreakpointsSynchronizer extends AbstractDsfService
 			return;
 		}
 
-		sourceLookup.getSource(srcDmc, debuggerPath, new DataRequestMonitor<Object>(getExecutor(), rm) {
+		sourceLookup.getSource(srcDmc, debuggerPath, new DataRequestMonitor<>(getExecutor(), rm) {
 			@Override
 			@ConfinedToDsfExecutor("fExecutor")
 			protected void handleCompleted() {

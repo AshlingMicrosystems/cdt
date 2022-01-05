@@ -8,15 +8,15 @@ C_SRCS += \
 ../Sources/func2.c \
 ../Sources/func4.c 
 
-OBJS += \
-./Sources/func1.o \
-./Sources/func2.o \
-./Sources/func4.o 
-
 C_DEPS += \
 ./Sources/func1.d \
 ./Sources/func2.d \
 ./Sources/func4.d 
+
+OBJS += \
+./Sources/func1.o \
+./Sources/func2.o \
+./Sources/func4.o 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -32,4 +32,11 @@ Sources/%.d: ../Sources/%.c Sources/subdir.mk
 	gcc -w -MM -MP -MT"$@" -MT"$(@:%.d=%.o)" -I../Headers -I../Sources/sub\ sources -MF "$@" "$<"
 	@echo ' '
 
+
+clean: clean-Sources
+
+clean-Sources:
+	-$(RM) ./Sources/func1.d ./Sources/func1.o ./Sources/func2.d ./Sources/func2.o ./Sources/func4.d ./Sources/func4.o
+
+.PHONY: clean-Sources
 

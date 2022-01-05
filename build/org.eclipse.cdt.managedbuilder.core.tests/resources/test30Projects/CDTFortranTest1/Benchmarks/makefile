@@ -42,9 +42,9 @@ CDTFortranTest1.exe: $(OBJS) $(USER_OBJS) makefile objects.mk $(OPTIONAL_TOOL_DE
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(MODS)$(EXECUTABLES) CDTFortranTest1.exe
+	-$(RM) CDTFortranTest1.exe
 	-@echo ' '
 
-.PHONY: all clean dependents
+.PHONY: all clean dependents main-build
 
 -include ../makefile.targets

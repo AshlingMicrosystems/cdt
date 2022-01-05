@@ -14,8 +14,7 @@
 
 package org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout.actions;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.HashSet;
 
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
@@ -60,8 +59,7 @@ public abstract class DsfDebugViewLayoutCommand implements IDebugCommandHandler 
 	 */
 	protected IExecutionDMContext[] getDMContexts(IDebugCommandRequest request) {
 
-		// note: using LinkedHashSet to preserve elements order
-		Set<IExecutionDMContext> ret = new LinkedHashSet<>();
+		HashSet<IExecutionDMContext> ret = new HashSet<>();
 		String sessionId = null;
 
 		for (Object obj : request.getElements()) {

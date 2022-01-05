@@ -17,9 +17,6 @@ package org.eclipse.cdt.dsf.debug.ui.viewmodel.numberformat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -32,8 +29,6 @@ import org.eclipse.cdt.dsf.ui.viewmodel.IVMNode;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;
 import org.eclipse.cdt.dsf.ui.viewmodel.update.ICacheEntry;
 import org.eclipse.cdt.dsf.ui.viewmodel.update.ICachingVMProviderExtension2;
-import org.eclipse.debug.core.DebugPlugin;
-import org.eclipse.debug.core.model.IWatchExpression;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationContext;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -79,41 +74,13 @@ public class ElementNumberFormatsContribution extends NumberFormatsContribution 
 		@Override
 		public void run() {
 			if (fFormatId == null) {
-
 				fProvider.setActiveFormat(fContext, fNodes, fViewerInput, fElementPaths, fFormatId);
 				return;
 			}
 			if (isChecked()) {
-				//<CUSTOMISATION> ASHLING - Calling a method to refresh the UI
-				updateExpressionUI();
-				//<CUSTOMISATION> ASHLING
 				fProvider.setActiveFormat(fContext, fNodes, fViewerInput, fElementPaths, fFormatId);
 			}
 		}
-	}
-
-	//<CUSTOMISATION> ASHLING - On format change an empty expression is added and removed to refresh UI
-	//Here we are adding a dummy expression and removing that to update the UI
-	//But when we removing the dummy expression before its updating in the UI its removing the "Add new expression row"
-	//so we added a 150 millisecond delay so that it can update the UI and can remove the dummy expression
-	//and called executor.shutdown(); so that we can avoid the resource leak.
-
-	//FIXME Try to make UI refresh using a different strategy
-	private static void updateExpressionUI() {
-
-		IWatchExpression watchExpression = DebugPlugin.getDefault().getExpressionManager().newWatchExpression(""); //$NON-NLS-1$
-		DebugPlugin.getDefault().getExpressionManager().addExpression(watchExpression);
-
-		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-		executor.schedule(new Runnable() {
-
-			@Override
-			public void run() {
-				DebugPlugin.getDefault().getExpressionManager().removeExpression(watchExpression);
-			}
-		}, 300, TimeUnit.MILLISECONDS);
-		executor.shutdown();
-		//</CUSTOMISATION> ASHLING
 	}
 
 	protected static IContributionItem[] NO_ITEMS = new IContributionItem[] { new ContributionItem() {

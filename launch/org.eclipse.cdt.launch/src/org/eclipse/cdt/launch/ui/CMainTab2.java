@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
+import org.eclipse.cdt.launch.LaunchUtils;
 import org.eclipse.cdt.launch.internal.ui.LaunchImages;
 import org.eclipse.cdt.launch.internal.ui.LaunchMessages;
 import org.eclipse.cdt.launch.internal.ui.LaunchUIPlugin;
@@ -43,7 +44,6 @@ import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.ui.DebugUITools;
 import org.eclipse.debug.ui.IDebugUIConstants;
-import org.eclipse.debug.ui.StringVariableSelectionDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.window.Window;
@@ -52,14 +52,17 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.TwoPaneElementSelector;
 
 /**
@@ -71,7 +74,6 @@ import org.eclipse.ui.dialogs.TwoPaneElementSelector;
  * @since 7.3
  */
 
-//<CUSTOMISATION> ASHLING - Now supports only Core file debugging, commented all related to TRACE file and file type selection, added eclipse variables support
 public class CMainTab2 extends CAbstractMainTab {
 
 	/**
@@ -89,7 +91,7 @@ public class CMainTab2 extends CAbstractMainTab {
 	 * Combo box to select which type of post mortem file should be used.
 	 * We currently support core files and trace files.
 	 */
-	//protected Combo fCoreTypeCombo;
+	protected Combo fCoreTypeCombo;
 
 	private final boolean fDontCheckProgram;
 	private final boolean fSpecifyCoreFile;
@@ -114,7 +116,7 @@ public class CMainTab2 extends CAbstractMainTab {
 		Composite comp = new Composite(parent, SWT.NONE);
 		setControl(comp);
 
-		LaunchUIPlugin.getDefault().getWorkbench().getHelpSystem().setHelp(getControl(),
+		PlatformUI.getWorkbench().getHelpSystem().setHelp(getControl(),
 				ICDTLaunchHelpContextIds.LAUNCH_CONFIGURATION_DIALOG_MAIN_TAB);
 
 		GridLayout topLayout = new GridLayout();
@@ -206,14 +208,14 @@ public class CMainTab2 extends CAbstractMainTab {
 		gd.horizontalSpan = colSpan;
 		coreComp.setLayoutData(gd);
 
-		//		Label comboLabel = new Label(coreComp, SWT.NONE);
-		//		comboLabel.setText(LaunchMessages.CMainTab2_Post_mortem_file_type);
-		//		comboLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
-		//
-		//		fCoreTypeCombo = new Combo(coreComp, SWT.READ_ONLY | SWT.DROP_DOWN);
-		//		fCoreTypeCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 2, 1));
-		//		fCoreTypeCombo.add(CORE_FILE);
-		//		fCoreTypeCombo.add(TRACE_FILE);
+		Label comboLabel = new Label(coreComp, SWT.NONE);
+		comboLabel.setText(LaunchMessages.CMainTab2_Post_mortem_file_type);
+		comboLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
+
+		fCoreTypeCombo = new Combo(coreComp, SWT.READ_ONLY | SWT.DROP_DOWN);
+		fCoreTypeCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 2, 1));
+		fCoreTypeCombo.add(CORE_FILE);
+		fCoreTypeCombo.add(TRACE_FILE);
 
 		fCoreLabel = new Label(coreComp, SWT.NONE);
 		fCoreLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
@@ -250,28 +252,18 @@ public class CMainTab2 extends CAbstractMainTab {
 			}
 		});
 
-		Button variablesButton;
-		variablesButton = createPushButton(coreComp, LaunchMessages.CMainTab_Variables, null);
-		variablesButton.addSelectionListener(new SelectionAdapter() {
+		fCoreTypeCombo.addSelectionListener(new SelectionListener() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				variablesButtonSelected(fCoreText);
+				updateCoreFileLabel();
 				updateLaunchConfigurationDialog();
 			}
-		});
 
-		//		fCoreTypeCombo.addSelectionListener(new SelectionListener() {
-		//			@Override
-		//			public void widgetSelected(SelectionEvent e) {
-		//				updateCoreFileLabel();
-		//				updateLaunchConfigurationDialog();
-		//			}
-		//
-		//			@Override
-		//			public void widgetDefaultSelected(SelectionEvent e) {
-		//			}
-		//		});
-		//		fCoreTypeCombo.select(0);
+			@Override
+			public void widgetDefaultSelected(SelectionEvent e) {
+			}
+		});
+		fCoreTypeCombo.select(0);
 	}
 
 	/**
@@ -299,39 +291,37 @@ public class CMainTab2 extends CAbstractMainTab {
 	protected void updateCoreFromConfig(ILaunchConfiguration config) {
 		if (fCoreText != null) {
 			String coreName = EMPTY_STRING;
-			//String coreType = ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TYPE_DEFAULT;
+			String coreType = ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TYPE_DEFAULT;
 			try {
 				coreName = config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_COREFILE_PATH, EMPTY_STRING);
-				//				coreType = config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_POST_MORTEM_TYPE,
-				//						ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TYPE_DEFAULT);
+				coreType = config.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_POST_MORTEM_TYPE,
+						ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TYPE_DEFAULT);
 			} catch (CoreException ce) {
 				LaunchUIPlugin.log(ce);
 			}
 			fCoreText.setText(coreName);
-			//			if (coreType.equals(ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE)) {
-			//				fCoreTypeCombo.setText(CORE_FILE);
-			//			} else if (coreType.equals(ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TRACE_FILE)) {
-			//				fCoreTypeCombo.setText(TRACE_FILE);
-			//			} else {
-			//				assert false : "Unknown core file type"; //$NON-NLS-1$
-			//				fCoreTypeCombo.setText(CORE_FILE);
-			//			}
+			if (coreType.equals(ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE)) {
+				fCoreTypeCombo.setText(CORE_FILE);
+			} else if (coreType.equals(ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TRACE_FILE)) {
+				fCoreTypeCombo.setText(TRACE_FILE);
+			} else {
+				assert false : "Unknown core file type"; //$NON-NLS-1$
+				fCoreTypeCombo.setText(CORE_FILE);
+			}
 			updateCoreFileLabel();
 		}
 	}
 
 	protected String getSelectedCoreType() {
-		//<CUSTOMISATIO> ASHLING - Now supports only core file debugging
-		return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE;
-		//		int selectedIndex = fCoreTypeCombo.getSelectionIndex();
-		//		if (fCoreTypeCombo.getItem(selectedIndex).equals(CORE_FILE)) {
-		//			return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE;
-		//		} else if (fCoreTypeCombo.getItem(selectedIndex).equals(TRACE_FILE)) {
-		//			return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TRACE_FILE;
-		//		} else {
-		//			assert false : "Unknown post mortem file type"; //$NON-NLS-1$
-		//			return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE;
-		//		}
+		int selectedIndex = fCoreTypeCombo.getSelectionIndex();
+		if (fCoreTypeCombo.getItem(selectedIndex).equals(CORE_FILE)) {
+			return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE;
+		} else if (fCoreTypeCombo.getItem(selectedIndex).equals(TRACE_FILE)) {
+			return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_TRACE_FILE;
+		} else {
+			assert false : "Unknown post mortem file type"; //$NON-NLS-1$
+			return ICDTLaunchConfigurationConstants.DEBUGGER_POST_MORTEM_CORE_FILE;
+		}
 	}
 
 	protected void updateCoreFileLabel() {
@@ -486,8 +476,14 @@ public class CMainTab2 extends CAbstractMainTab {
 					setErrorMessage(LaunchMessages.CMainTab_Project_must_be_opened);
 					return false;
 				}
-				if (!project.getFile(programName).exists()) {
+				exePath = LaunchUtils.toAbsoluteProgramPath(project, exePath);
+				File executable = exePath.toFile();
+				if (!executable.exists()) {
 					setErrorMessage(LaunchMessages.CMainTab_Program_does_not_exist);
+					return false;
+				}
+				if (!executable.isFile()) {
+					setErrorMessage(LaunchMessages.CMainTab_Selection_must_be_file);
 					return false;
 				}
 			}
@@ -619,12 +615,5 @@ public class CMainTab2 extends CAbstractMainTab {
 	@Override
 	public Image getImage() {
 		return LaunchImages.get(LaunchImages.IMG_VIEW_MAIN_TAB);
-	}
-
-	private void variablesButtonSelected(Text text) {
-		StringVariableSelectionDialog dialog = new StringVariableSelectionDialog(getShell());
-		if (dialog.open() == StringVariableSelectionDialog.OK) {
-			text.insert(dialog.getVariableExpression());
-		}
 	}
 }

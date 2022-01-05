@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2016 Ericsson and others.
+ * Copyright (c) 2016, 2021 Ericsson and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -59,7 +59,8 @@ public class GDBBackend_7_12 extends GDBBackend {
 
 	@Override
 	public boolean isFullGdbConsoleSupported() {
-		return !Platform.getOS().equals(Platform.OS_WIN32) && !Platform.getOS().equals(Platform.OS_MACOSX)
+		return System.getenv("FLATPAK_SANDBOX_DIR") == null //$NON-NLS-1$
+				&& !Platform.getOS().equals(Platform.OS_WIN32) && !Platform.getOS().equals(Platform.OS_MACOSX)
 				&& !fPtyFailure;
 	}
 
@@ -123,7 +124,9 @@ public class GDBBackend_7_12 extends GDBBackend {
 		return fDummyErrorStream;
 	}
 
+	/** @deprecated Override {@link #getDebuggerCommandLineArray()} instead */
 	@Override
+	@Deprecated(since = "6.4", forRemoval = true)
 	protected String[] getDebuggerCommandLine() {
 		// Start from the original command line method which
 		// could have been overridden by extenders, and add what we need

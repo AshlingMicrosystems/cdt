@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2015 Ericsson and others.
+ * Copyright (c) 2008, 2014 Ericsson and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -158,12 +158,13 @@ public class GDBProcesses extends MIProcesses implements IGDBProcesses {
 
 	/** @since 4.0 */
 	@Override
-	public IMIContainerDMContext createContainerContextFromGroupId(IDMContext dmc, String groupId) {
+	public IMIContainerDMContext createContainerContextFromGroupId(ICommandControlDMContext controlDmc,
+			String groupId) {
 		IProcessDMContext processDmc;
 		if (fProcId != null) {
-			processDmc = createProcessContext(dmc, fProcId);
+			processDmc = createProcessContext(controlDmc, fProcId);
 		} else {
-			processDmc = createProcessContext(dmc, MIProcesses.UNKNOWN_PROCESS_ID);
+			processDmc = createProcessContext(controlDmc, MIProcesses.UNKNOWN_PROCESS_ID);
 		}
 		return createContainerContext(processDmc, groupId);
 	}
@@ -234,7 +235,7 @@ public class GDBProcesses extends MIProcesses implements IGDBProcesses {
 			final DataRequestMonitor<IDMContext> rm) {
 		final IMIContainerDMContext containerDmc = createContainerContext(procCtx, MIProcesses.UNIQUE_GROUP_ID);
 
-		DataRequestMonitor<MIInfo> attachRm = new ImmediateDataRequestMonitor<>(rm) {
+		DataRequestMonitor<MIInfo> attachRm = new ImmediateDataRequestMonitor<MIInfo>(rm) {
 			@Override
 			protected void handleSuccess() {
 				GDBProcesses.super.attachDebuggerToProcess(procCtx, new ImmediateDataRequestMonitor<IDMContext>(rm) {
@@ -601,7 +602,8 @@ public class GDBProcesses extends MIProcesses implements IGDBProcesses {
 		createConsole(containerDmc, restart, new ImmediateRequestMonitor(requestMonitor) {
 			@Override
 			protected void handleSuccess() {
-				final DataRequestMonitor<MIInfo> execMonitor = new DataRequestMonitor<>(getExecutor(), requestMonitor) {
+				final DataRequestMonitor<MIInfo> execMonitor = new DataRequestMonitor<MIInfo>(getExecutor(),
+						requestMonitor) {
 					@Override
 					protected void handleSuccess() {
 						if (fBackend.getSessionType() != SessionType.REMOTE) {
