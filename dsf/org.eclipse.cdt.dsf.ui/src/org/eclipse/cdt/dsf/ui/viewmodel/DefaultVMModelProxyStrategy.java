@@ -619,9 +619,10 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
 					-1, -1, new DataRequestMonitor<List<Object>>(getVMProvider().getExecutor(), rm) {
 						@Override
 						protected void handleCompleted() {
-							if (fDisposed)
+							if (fDisposed) {
+								rm.done();
 								return;
-
+							}
 							final List<Object> childElements = getData();
 
 							// Check for an empty list of elements.  If the list of elements is empty
