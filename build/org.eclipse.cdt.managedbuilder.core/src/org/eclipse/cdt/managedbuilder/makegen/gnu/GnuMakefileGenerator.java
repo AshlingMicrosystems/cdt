@@ -112,7 +112,9 @@ import org.eclipse.core.runtime.SubProgressMonitor;
  *
  * @since 1.2
  * @noinstantiate This class is not intended to be instantiated by clients.
+ * @deprecated Replaced by {@link org.eclipse.cdt.managedbuilder.makegen.gnu2.GnuMakefileGenerator}
  */
+@Deprecated
 public class GnuMakefileGenerator implements IManagedBuilderMakefileGenerator2 {
 	private static final IPath DOT_SLASH_PATH = new Path("./"); //$NON-NLS-1$
 
@@ -1544,9 +1546,9 @@ public class GnuMakefileGenerator implements IManagedBuilderMakefileGenerator2 {
 		}
 
 		// Add all the needed dummy and phony targets
-		buffer.append(".PHONY: all clean dependents"); //$NON-NLS-1$
+		buffer.append(".PHONY: all clean dependents").append(WHITESPACE).append(MAINBUILD); //$NON-NLS-1$
 		if (prebuildStep.length() > 0) {
-			buffer.append(WHITESPACE).append(MAINBUILD).append(WHITESPACE).append(PREBUILD);
+			buffer.append(WHITESPACE).append(PREBUILD);
 		}
 		if (postbuildStep.length() > 0) {
 			buffer.append(WHITESPACE).append(POSTBUILD);

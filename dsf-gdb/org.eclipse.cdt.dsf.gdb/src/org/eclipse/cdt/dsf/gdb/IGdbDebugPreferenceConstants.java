@@ -15,7 +15,6 @@
  *     Anton Gorenkov - A preference to use RTTI for variable types determination (Bug 377536)
  *     Marc Khouzam (Ericsson) - Add preference for aggressive breakpoint filtering (Bug 360735)
  *     Intel Corporation - Added Reverse Debugging BTrace support
- *     Ashling
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb;
 
@@ -249,12 +248,17 @@ public interface IGdbDebugPreferenceConstants {
 	 */
 	public static final String PREF_DEFAULT_REMOTE_TIMEOUT_VALUE = "defaultRemoteTimeoutValue"; //$NON-NLS-1$
 
-	// <CUSTOMIZATION ASHLING> - key for context based breakpoint filter
 	/**
-	 * @since 5.8
+	 * The value of suspend timeout
+	 *
+	 * @since 6.5
 	 */
-	public static final String PREF_CONTEXT_BP_FILTER = PREFIX + "BpFilter"; //$NON-NLS-1$
+	public static final String PREF_SUSPEND_TIMEOUT_VALUE = "suspendTimeoutValue"; //$NON-NLS-1$
 
-	// </CUSTOMIZATION ASHLING>
-
+	/**
+	 * Default value of {@link #PREF_SUSPEND_TIMEOUT_VALUE}
+	 *
+	 * @since 6.5
+	 */
+	public static final int SUSPEND_TIMEOUT_VALUE_DEFAULT = 10;
 }

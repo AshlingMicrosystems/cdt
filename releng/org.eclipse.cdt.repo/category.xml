@@ -224,36 +224,66 @@
    <bundle id="org.eclipse.tools.templates.freemarker.source" version="0.0.0"/>
    <bundle id="org.eclipse.tools.templates.ui" version="0.0.0"/>
    <bundle id="org.eclipse.tools.templates.ui.source" version="0.0.0"/>
-   <bundle id="org.eclipse.cdt.cmake.is.arm">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.arm">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.arm.source">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.arm.source">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.hpenonstop">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.hpenonstop">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.hpenonstop.source">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.hpenonstop.source">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.intel">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.intel">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.intel.source">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.intel.source">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.microsoft">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.microsoft">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.microsoft.source">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.microsoft.source">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.nvidia">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.nvidia">
+      <category name="extra-jsoncdb"/>
    </bundle>
-   <bundle id="org.eclipse.cdt.cmake.is.nvidia.source">
-      <category name="extra"/>
+   <bundle id="org.eclipse.cdt.jsoncdb.nvidia.source">
+      <category name="extra-jsoncdb"/>
    </bundle>
+   <feature id="org.eclipse.remote">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.serial">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.serial.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.console">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.console.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.telnet">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.telnet.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.proxy">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.proxy.source">
+      <category name="remote_sdk"/>
+   </feature>
    <category-def name="main" label="CDT Main Features"/>
    <category-def name="extra" label="CDT Optional Features"/>
    <category-def name="launchbar" label="LaunchBar"/>
@@ -268,4 +298,12 @@
          TM Terminal SDK Features
       </description>
    </category-def>
+   <category-def name="extra-jsoncdb" label="JSON CDB Extras">
+      <category name="extra"/>
+      <description>
+         Additional compilers support for the JSON CDB parser.
+      </description>
+   </category-def>
+   <category-def name="remote" label="Remote Services"/>
+   <category-def name="remote_sdk" label="Remote Services SDK"/>
 </site>

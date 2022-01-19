@@ -24,16 +24,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.tm.terminal.view.ui.interfaces.IExternalExecutablesProperties;
 import org.eclipse.tm.terminal.view.ui.local.showin.IDetectExternalExecutable;
 
 public class DetectWSL implements IDetectExternalExecutable {
 
-	/**
-	 * Don't access directly, use {@link #getEntries()}
-	 */
-	List<Map<String, String>> result = null;
+	private List<Map<String, String>> result = null;
+	private WslDetectJob detectJob = null;
+
+	public DetectWSL() {
+		if (!Platform.OS_WIN32.equals(Platform.getOS())) {
+			result = Collections.emptyList();
+		}
+	}
 
 	@Override
 	public boolean hasEntries() {
@@ -55,16 +64,50 @@ public class DetectWSL implements IDetectExternalExecutable {
 	}
 
 	private synchronized List<Map<String, String>> getEntries() {
-		if (result == null) {
+		// getEntries can be called in many contexts, even from within
+		// menu creation (see Bug 574519). Therefore we spawn a job to
+		// get the real entries, which means until the job is done, this
+		// method will return no entries.
+		if (result != null) {
+			return result;
+		}
+		if (detectJob == null) {
+			detectJob = new WslDetectJob();
+			detectJob.schedule();
+		}
+		try {
+			if (detectJob.join(10, null) && detectJob.result != null) { // Suspended jobs return early from join()
+				result = detectJob.result;
+				detectJob = null;
+			} else {
+				return Collections.emptyList();
+			}
+		} catch (OperationCanceledException | InterruptedException e) {
 			result = Collections.emptyList();
-			if (Platform.OS_WIN32.equals(Platform.getOS())) {
+			detectJob = null;
+		}
+		return result;
+	}
+
+	private static class WslDetectJob extends Job {
+		private List<Map<String, String>> result = null;
+
+		public WslDetectJob() {
+			super("Detect WSL Instances"); //$NON-NLS-1$
+			setSystem(true);
+		}
+
+		@Override
+		protected IStatus run(IProgressMonitor monitor) {
+			if (result == null) {
+				result = Collections.emptyList();
 				String windir = System.getenv("windir"); //$NON-NLS-1$
 				if (windir == null) {
-					return result;
+					return Status.OK_STATUS;
 				}
 				String wsl = windir + "\\System32\\wsl.exe"; //$NON-NLS-1$
 				if (!Files.isExecutable(Paths.get(wsl))) {
-					return result;
+					return Status.OK_STATUS;
 				}
 
 				ProcessBuilder pb = new ProcessBuilder(wsl, "--list", "--quiet"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -73,7 +116,7 @@ public class DetectWSL implements IDetectExternalExecutable {
 					try (InputStream is = process.getErrorStream()) {
 						// drain the error stream
 						if (is.readAllBytes().length != 0) {
-							return result;
+							return Status.OK_STATUS;
 						}
 					}
 
@@ -101,11 +144,24 @@ public class DetectWSL implements IDetectExternalExecutable {
 						}
 					}
 
+					try {
+						// lets get the return code to make sure that the process did not produce anything unexpected. As the streams
+						// are closed, the waitFor shouldn't block.
+						if (process.waitFor() != 0) {
+							// WSL can send errors to stdout, so discard results if the exit value ends up being non-zero
+							result.clear();
+						}
+					} catch (InterruptedException e) {
+						// we've been interrupted, give up on the output we have (probably unreachable in practice)
+						result.clear();
+					}
+
 				} catch (IOException e) {
 				}
 			}
+			return Status.OK_STATUS;
 		}
-		return result;
+
 	}
 
 }

@@ -29,10 +29,31 @@ import org.eclipse.osgi.util.NLS;
 
 public class Spawner extends Process {
 
-	public int NOOP = 0;
-	public int HUP = 1;
-	public int KILL = 9;
-	public int TERM = 15;
+	@Deprecated(forRemoval = true)
+	public int NOOP = SIG_NOOP;
+
+	@Deprecated(forRemoval = true)
+	public int HUP = SIG_HUP;
+
+	@Deprecated(forRemoval = true)
+	public int KILL = SIG_KILL;
+
+	@Deprecated(forRemoval = true)
+	public int TERM = SIG_TERM;
+
+	@Deprecated(forRemoval = true)
+	public int INT = SIG_INT;
+
+	/**
+	 * @since 5.2
+	 */
+	@Deprecated(forRemoval = true)
+	public int CTRLC = SIG_CTRLC;
+
+	private final static int SIG_NOOP = 0;
+	private final static int SIG_HUP = 1;
+	private final static int SIG_KILL = 9;
+	private final static int SIG_TERM = 15;
 
 	/**
 	 * On Windows, what this does is far from easy to explain.
@@ -51,32 +72,54 @@ public class Spawner extends Process {
 	 * </ul>
 	 *
 	 * On non-Windows, raising this just raises a POSIX SIGINT
-	 *
 	 */
-	public int INT = 2;
+	private final static int SIG_INT = 2;
 
 	/**
 	 * A fabricated signal number for use on Windows only. Tells the starter program to send a CTRL-C
 	 * regardless of whether the process is a Cygwin one or not.
-	 *
-	 * @since 5.2
 	 */
-	public int CTRLC = 1000; // arbitrary high number to avoid collision
+	private final static int SIG_CTRLC = 1000; // arbitrary high number to avoid collision
+
+	private final static int DEFAULT_GRACEFUL_EXIT_TIME_MS;
+
+	static {
+		String timeStr = System.getProperty("org.eclipse.cdt.core.graceful_exit_time_ms"); //$NON-NLS-1$
+		int time = 1000;
+		if (timeStr != null) {
+			try {
+				time = Integer.parseInt(timeStr);
+			} catch (NumberFormatException e) {
+				CNativePlugin.log(
+						"Failed to parse system property. Falling back to " + time + " ms graceful exit time.", //$NON-NLS-1$ //$NON-NLS-2$
+						e);
+			}
+		}
+		DEFAULT_GRACEFUL_EXIT_TIME_MS = time;
+	}
 
 	int pid = 0;
 	int status;
 	final IChannel[] fChannels = { null, null, null };
-	boolean isDone;
 	OutputStream out;
 	InputStream in;
 	InputStream err;
 	private PTY fPty;
+
+	private final int fGracefulExitTimeMs;
+
+	private static enum State {
+		RUNNING, DESTROYING, DONE
+	}
+
+	private State fState = State.RUNNING;
 
 	/**
 	 * @deprecated Do not use this method it splits command line arguments on whitespace with no regard to quoting rules. See Bug 573677
 	 */
 	@Deprecated
 	public Spawner(String command, boolean bNoRedirect) throws IOException {
+		fGracefulExitTimeMs = DEFAULT_GRACEFUL_EXIT_TIME_MS;
 		StringTokenizer tokenizer = new StringTokenizer(command);
 		String[] cmdarray = new String[tokenizer.countTokens()];
 		for (int n = 0; tokenizer.hasMoreTokens(); n++)
@@ -87,11 +130,17 @@ public class Spawner extends Process {
 			exec(cmdarray, new String[0], "."); //$NON-NLS-1$
 	}
 
+	protected Spawner(String[] cmdarray, String[] envp, File dir) throws IOException {
+		this(cmdarray, envp, dir, DEFAULT_GRACEFUL_EXIT_TIME_MS);
+	}
+
 	/**
 	 * Executes the specified command and arguments in a separate process with the
 	 * specified environment and working directory.
+	 * @since 6.2
 	 **/
-	protected Spawner(String[] cmdarray, String[] envp, File dir) throws IOException {
+	protected Spawner(String[] cmdarray, String[] envp, File dir, int gracefulExitTimeMs) throws IOException {
+		fGracefulExitTimeMs = gracefulExitTimeMs;
 		String dirpath = "."; //$NON-NLS-1$
 		if (dir != null)
 			dirpath = dir.getAbsolutePath();
@@ -99,6 +148,14 @@ public class Spawner extends Process {
 	}
 
 	protected Spawner(String[] cmdarray, String[] envp, File dir, PTY pty) throws IOException {
+		this(cmdarray, envp, dir, pty, DEFAULT_GRACEFUL_EXIT_TIME_MS);
+	}
+
+	/**
+	 * @since 6.2
+	 */
+	protected Spawner(String[] cmdarray, String[] envp, File dir, PTY pty, int gracefulExitTimeMs) throws IOException {
+		fGracefulExitTimeMs = gracefulExitTimeMs;
 		String dirpath = "."; //$NON-NLS-1$
 		if (dir != null)
 			dirpath = dir.getAbsolutePath();
@@ -123,11 +180,25 @@ public class Spawner extends Process {
 	}
 
 	/**
+	 * @since 6.2
+	 */
+	protected Spawner(String[] cmdarray, int gracefulExitTimeMs) throws IOException {
+		this(cmdarray, null, gracefulExitTimeMs);
+	}
+
+	/**
 	 * Executes the specified command and arguments in a separate process with the
 	 * specified environment.
 	 **/
 	protected Spawner(String[] cmdarray, String[] envp) throws IOException {
 		this(cmdarray, envp, null);
+	}
+
+	/**
+	 * @since 6.2
+	 */
+	protected Spawner(String[] cmdarray, String[] envp, int gracefulExitTimeMs) throws IOException {
+		this(cmdarray, envp, null, gracefulExitTimeMs);
 	}
 
 	/**
@@ -147,6 +218,7 @@ public class Spawner extends Process {
 	 */
 	@Deprecated
 	protected Spawner(String command, String[] envp, File dir) throws IOException {
+		fGracefulExitTimeMs = DEFAULT_GRACEFUL_EXIT_TIME_MS;
 		StringTokenizer tokenizer = new StringTokenizer(command);
 		String[] cmdarray = new String[tokenizer.countTokens()];
 		for (int n = 0; tokenizer.hasMoreTokens(); n++)
@@ -223,7 +295,7 @@ public class Spawner extends Process {
 	 **/
 	@Override
 	public synchronized int waitFor() throws InterruptedException {
-		while (!isDone) {
+		while (fState != State.DONE) {
 			wait();
 		}
 
@@ -245,7 +317,7 @@ public class Spawner extends Process {
 	 **/
 	@Override
 	public synchronized int exitValue() {
-		if (!isDone) {
+		if (fState != State.DONE) {
 			throw new IllegalThreadStateException("Process not Terminated"); //$NON-NLS-1$
 		}
 		return status;
@@ -260,39 +332,50 @@ public class Spawner extends Process {
 	 **/
 	@Override
 	public synchronized void destroy() {
-		// Sends the TERM
-		terminate();
+		switch (fState) {
+		case RUNNING:
+			fState = State.DESTROYING;
 
-		// Close the streams on this side.
-		//
-		// We only close the streams that were
-		// never used by any client.
-		// So, if the stream was not created yet,
-		// we create it ourselves and close it
-		// right away, so as to release the pipe.
-		// Note that even if the stream was never
-		// created, the pipe has been allocated in
-		// native code, so we need to create the
-		// stream and explicitly close it.
-		//
-		// We don't close streams the clients have
-		// created because we don't know when the
-		// client will be finished using them.
-		// It is up to the client to close those
-		// streams.
-		//
-		// But 345164
-		closeUnusedStreams();
+			// Sends the TERM
+			terminate();
 
-		// Grace before using the heavy gone.
-		if (!isDone) {
-			try {
-				wait(1000);
-			} catch (InterruptedException e) {
+			// Close the streams on this side.
+			//
+			// We only close the streams that were
+			// never used by any client.
+			// So, if the stream was not created yet,
+			// we create it ourselves and close it
+			// right away, so as to release the pipe.
+			// Note that even if the stream was never
+			// created, the pipe has been allocated in
+			// native code, so we need to create the
+			// stream and explicitly close it.
+			//
+			// We don't close streams the clients have
+			// created because we don't know when the
+			// client will be finished using them.
+			// It is up to the client to close those
+			// streams.
+			//
+			// But 345164
+			closeUnusedStreams();
+
+			// Grace before using the heavy gun.
+			if (fState != State.DONE) {
+				try {
+					wait(fGracefulExitTimeMs);
+				} catch (InterruptedException e) {
+				}
 			}
-		}
-		if (!isDone) {
-			kill();
+			if (fState != State.DONE) {
+				kill();
+			}
+			break;
+
+		case DESTROYING:
+		case DONE:
+			// Nothing to do
+			break;
 		}
 	}
 
@@ -307,7 +390,7 @@ public class Spawner extends Process {
 	 * linux, interrupt it by raising a SIGINT.
 	 */
 	public int interrupt() {
-		return raise(pid, INT);
+		return raise(pid, SIG_INT);
 	}
 
 	/**
@@ -318,26 +401,26 @@ public class Spawner extends Process {
 	 */
 	public int interruptCTRLC() {
 		if (Platform.getOS().equals(Platform.OS_WIN32)) {
-			return raise(pid, CTRLC);
+			return raise(pid, SIG_CTRLC);
 		} else {
 			return interrupt();
 		}
 	}
 
 	public int hangup() {
-		return raise(pid, HUP);
+		return raise(pid, SIG_HUP);
 	}
 
 	public int kill() {
-		return raise(pid, KILL);
+		return raise(pid, SIG_KILL);
 	}
 
 	public int terminate() {
-		return raise(pid, TERM);
+		return raise(pid, SIG_TERM);
 	}
 
 	public boolean isRunning() {
-		return (raise(pid, NOOP) == 0);
+		return (raise(pid, SIG_NOOP) == 0);
 	}
 
 	private void exec(String[] cmdarray, String[] envp, String dirpath) throws IOException {
@@ -464,6 +547,13 @@ public class Spawner extends Process {
 	public native int raise(int processID, int sig);
 
 	/**
+	 * @since 6.2
+	 */
+	public int raise(int sig) {
+		return raise(pid, sig);
+	}
+
+	/**
 	 * Native method to wait(3) for process to terminate.
 	 * @noreference This method is not intended to be referenced by clients.
 	 */
@@ -563,7 +653,7 @@ public class Spawner extends Process {
 				// Sync with spawner and notify when done.
 				status = waitFor(pid);
 				synchronized (Spawner.this) {
-					isDone = true;
+					fState = Spawner.State.DONE;
 					Spawner.this.notifyAll();
 				}
 			}

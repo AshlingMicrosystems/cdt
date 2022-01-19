@@ -6,11 +6,11 @@
 CPP_SRCS += \
 ../Functions/Func1.cpp 
 
-OBJS += \
-./Functions/Func1.o 
-
 CPP_DEPS += \
 ./Functions/Func1.d 
+
+OBJS += \
+./Functions/Func1.o 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -21,4 +21,11 @@ Functions/%.o: ../Functions/%.cpp Functions/subdir.mk
 	@echo 'Finished building: $<'
 	@echo ' '
 
+
+clean: clean-Functions
+
+clean-Functions:
+	-$(RM) ./Functions/Func1.d ./Functions/Func1.o
+
+.PHONY: clean-Functions
 

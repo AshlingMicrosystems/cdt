@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: %pluginName
 Bundle-Vendor: %providerName
 Bundle-SymbolicName: org.eclipse.cdt.dsf.gdb;singleton:=true
-Bundle-Version: 6.4.0.qualifier
+Bundle-Version: 6.5.100.qualifier
 Bundle-Activator: org.eclipse.cdt.dsf.gdb.internal.GdbPlugin
 Bundle-Localization: plugin
 Require-Bundle: org.eclipse.core.runtime,
@@ -50,5 +50,4 @@ Export-Package: org.eclipse.cdt.dsf.gdb,
  org.eclipse.cdt.dsf.mi.service.command.commands,
  org.eclipse.cdt.dsf.mi.service.command.events,
  org.eclipse.cdt.dsf.mi.service.command.output
-Import-Package: com.ibm.icu.text
 Automatic-Module-Name: org.eclipse.cdt.dsf.gdb

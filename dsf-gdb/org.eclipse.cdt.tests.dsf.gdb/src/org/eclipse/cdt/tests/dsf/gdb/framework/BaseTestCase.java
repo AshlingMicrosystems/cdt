@@ -680,10 +680,11 @@ public class BaseTestCase {
 				String server = (String) launchAttributes.get(ATTR_DEBUG_SERVER_NAME);
 				String port = (String) launchAttributes.get(IGDBLaunchConfigurationConstants.ATTR_PORT);
 				String program = (String) launchAttributes.get(ICDTLaunchConfigurationConstants.ATTR_PROGRAM_NAME);
-				String commandLine = server + " :" + port + " " + program;
+				String[] commandLine = { server, ":" + port, program };
 				try {
 					if (GdbDebugOptions.DEBUG)
-						GdbDebugOptions.trace("Starting gdbserver with command: " + commandLine + "\n");
+						GdbDebugOptions
+								.trace("Starting gdbserver with command: " + Arrays.toString(commandLine) + "\n");
 
 					gdbserverProc = ProcessFactory.getFactory().exec(commandLine);
 					Reader r = new InputStreamReader(gdbserverProc.getErrorStream());
@@ -787,7 +788,7 @@ public class BaseTestCase {
 	}
 
 	protected static String doReadGdbVersion(String gdb) throws IOException {
-		Process process = ProcessFactory.getFactory().exec(gdb + " --version");
+		Process process = ProcessFactory.getFactory().exec(new String[] { gdb, "--version" });
 		try {
 			String streamOutput;
 			try (BufferedReader buffer = new BufferedReader(new InputStreamReader(process.getInputStream()))) {

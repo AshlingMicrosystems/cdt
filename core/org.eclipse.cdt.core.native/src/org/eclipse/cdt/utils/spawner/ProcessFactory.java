@@ -58,6 +58,10 @@ public class ProcessFactory {
 		return instance;
 	}
 
+	/**
+	 * @deprecated Do not use this method it splits command line arguments on whitespace with no regard to quoting rules. See Bug 573677
+	 */
+	@Deprecated
 	public Process exec(String cmd) throws IOException {
 		cmd = modifyCmdIfFlatpak(cmd);
 		if (hasSpawner)
@@ -72,6 +76,16 @@ public class ProcessFactory {
 		return runtime.exec(cmdarray);
 	}
 
+	/**
+	 * @since 6.2
+	 */
+	public Process exec(String[] cmdarray, int gracefulExitTimeMs) throws IOException {
+		cmdarray = modifyCmdArrayIfFlatpak(cmdarray);
+		if (hasSpawner)
+			return new Spawner(cmdarray, gracefulExitTimeMs);
+		return runtime.exec(cmdarray);
+	}
+
 	public Process exec(String[] cmdarray, String[] envp) throws IOException {
 		cmdarray = modifyCmdArrayIfFlatpak(cmdarray);
 		if (hasSpawner)
@@ -79,6 +93,20 @@ public class ProcessFactory {
 		return runtime.exec(cmdarray, envp);
 	}
 
+	/**
+	 * @since 6.2
+	 */
+	public Process exec(String[] cmdarray, String[] envp, int gracefulExitTimeMs) throws IOException {
+		cmdarray = modifyCmdArrayIfFlatpak(cmdarray);
+		if (hasSpawner)
+			return new Spawner(cmdarray, envp, gracefulExitTimeMs);
+		return runtime.exec(cmdarray, envp);
+	}
+
+	/**
+	 * @deprecated Do not use this method it splits command line arguments on whitespace with no regard to quoting rules. See Bug 573677
+	 */
+	@Deprecated
 	public Process exec(String cmd, String[] envp) throws IOException {
 		cmd = modifyCmdIfFlatpak(cmd);
 		if (hasSpawner)
@@ -86,6 +114,10 @@ public class ProcessFactory {
 		return runtime.exec(cmd, envp);
 	}
 
+	/**
+	 * @deprecated Do not use this method it splits command line arguments on whitespace with no regard to quoting rules. See Bug 573677
+	 */
+	@Deprecated
 	public Process exec(String cmd, String[] envp, File dir) throws IOException {
 		cmd = modifyCmdIfFlatpak(cmd);
 		if (hasSpawner)
@@ -100,10 +132,31 @@ public class ProcessFactory {
 		return runtime.exec(cmdarray, envp, dir);
 	}
 
+	/**
+	 * @since 6.2
+	 */
+	public Process exec(String cmdarray[], String[] envp, File dir, int gracefulExitTimeMs) throws IOException {
+		cmdarray = modifyCmdArrayIfFlatpak(cmdarray);
+		if (hasSpawner)
+			return new Spawner(cmdarray, envp, dir, gracefulExitTimeMs);
+		return runtime.exec(cmdarray, envp, dir);
+	}
+
 	public Process exec(String cmdarray[], String[] envp, File dir, PTY pty) throws IOException {
 		cmdarray = modifyCmdArrayIfFlatpak(cmdarray);
 		if (hasSpawner)
 			return new Spawner(cmdarray, envp, dir, pty);
+		throw new UnsupportedOperationException(Messages.Util_exception_cannotCreatePty);
+	}
+
+	/**
+	 * @since 6.2
+	 */
+	public Process exec(String cmdarray[], String[] envp, File dir, PTY pty, int gracefulExitTimeMs)
+			throws IOException {
+		cmdarray = modifyCmdArrayIfFlatpak(cmdarray);
+		if (hasSpawner)
+			return new Spawner(cmdarray, envp, dir, pty, gracefulExitTimeMs);
 		throw new UnsupportedOperationException(Messages.Util_exception_cannotCreatePty);
 	}
 
