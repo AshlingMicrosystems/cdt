@@ -6,11 +6,11 @@
 CPP_SRCS += \
 ../source1/Class1.cpp 
 
-OBJS += \
-./source1/Class1.o 
-
 CPP_DEPS += \
 ./source1/Class1.d 
+
+OBJS += \
+./source1/Class1.o 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -23,4 +23,11 @@ source1/%.o: ../source1/%.cpp source1/subdir.mk
 	@echo 'Finished building: $<'
 	@echo ' '
 
+
+clean: clean-source1
+
+clean-source1:
+	-$(RM) ./source1/Class1.d ./source1/Class1.o
+
+.PHONY: clean-source1
 

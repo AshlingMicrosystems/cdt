@@ -6,11 +6,11 @@
 CPP_SRCS += \
 ../dir1/dd/excluded_c/inc.cpp 
 
-OBJS += \
-./dir1/dd/excluded_c/inc.o 
-
 CPP_DEPS += \
 ./dir1/dd/excluded_c/inc.d 
+
+OBJS += \
+./dir1/dd/excluded_c/inc.o 
 
 
 # Each subdirectory must supply rules for building sources it contributes
@@ -21,4 +21,11 @@ dir1/dd/excluded_c/%.o: ../dir1/dd/excluded_c/%.cpp dir1/dd/excluded_c/subdir.mk
 	@echo 'Finished building: $<'
 	@echo ' '
 
+
+clean: clean-dir1-2f-dd-2f-excluded_c
+
+clean-dir1-2f-dd-2f-excluded_c:
+	-$(RM) ./dir1/dd/excluded_c/inc.d ./dir1/dd/excluded_c/inc.o
+
+.PHONY: clean-dir1-2f-dd-2f-excluded_c
 

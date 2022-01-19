@@ -54,7 +54,9 @@ import org.eclipse.core.runtime.Path;
  * and outputs while a Gnu makefile is being generated.
  *
  * @noextend This class is not intended to be subclassed by clients.
+ * @deprecated Replaced by {@link org.eclipse.cdt.managedbuilder.makegen.gnu2.ManagedBuildGnuToolInfo}
  */
+@Deprecated
 public class ManagedBuildGnuToolInfo implements IManagedBuildGnuToolInfo {
 
 	/*

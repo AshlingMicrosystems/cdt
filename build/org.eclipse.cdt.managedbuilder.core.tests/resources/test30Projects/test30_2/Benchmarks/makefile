@@ -32,6 +32,15 @@ new.tar \
 LOGFILE += \
 new.log \
 
+TOUCHEDFILES += \
+alphabetical \
+are \
+file\ names \
+in \
+not \
+order \
+these \
+
 
 # All Target
 all: main-build
@@ -59,11 +68,17 @@ new.log: $(TAROUT) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
+these file\ names are not in alphabetical order: $(LOGFILE) makefile objects.mk $(OPTIONAL_TOOL_DEPS)
+	@echo 'Invoking: touch'
+	touch -r $(LOGFILE) "these" "file names" "are" "not" "in" "alphabetical" "order"
+	@echo 'Finished building: $@'
+	@echo ' '
+
 # Other Targets
 clean:
-	-$(RM) $(TAROUT)$(TERMINAL__DUMMY_OUTPUT__OUTPUTS)$(LOGFILE) test30_2.tmp
+	-$(RM) alphabetical are file\ names in new.log new.tar not order test30_2.tmp these
 	-@echo ' '
 
-.PHONY: all clean dependents
+.PHONY: all clean dependents main-build
 
 -include ../makefile.targets

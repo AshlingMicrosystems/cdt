@@ -969,7 +969,7 @@ public class CommonBuilder extends ACBuilder implements IIncrementalProjectBuild
 					//in case an error occured, make it behave in the old stile:
 					if (cfg.needsRebuild()) {
 						//make a full clean if an info needs a rebuild
-						clean(new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
+						clean((Map<String, String>) null, new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
 						makefileRegenerationNeeded = true;
 					} else if (delta != null && !makefileRegenerationNeeded) {
 						// Create a delta visitor to detect the build type
@@ -977,7 +977,8 @@ public class CommonBuilder extends ACBuilder implements IIncrementalProjectBuild
 								bInfo.getBuildInfo().getManagedProject().getConfigurations());
 						delta.accept(visitor);
 						if (visitor.shouldBuildFull()) {
-							clean(new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
+							clean((Map<String, String>) null,
+									new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
 							makefileRegenerationNeeded = true;
 						}
 					}
@@ -1037,7 +1038,7 @@ public class CommonBuilder extends ACBuilder implements IIncrementalProjectBuild
 	@Override
 	protected final void clean(IProgressMonitor monitor) throws CoreException {
 		throw new IllegalStateException(
-				"Unexpcted/incorrect call to old clean method. Client code must call clean(Map,IProgressMonitor)"); //$NON-NLS-1$
+				"Unexpected/incorrect call to old clean method. Client code must call clean(Map,IProgressMonitor)"); //$NON-NLS-1$
 	}
 
 	@Override
