@@ -14,21 +14,27 @@
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.actions;
 
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
+import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IMultiTerminate;
 import org.eclipse.cdt.dsf.debug.service.IProcesses;
 import org.eclipse.cdt.dsf.debug.service.IProcesses.IProcessDMContext;
+import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.gdb.internal.ui.GdbUIPlugin;
 import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
+import org.eclipse.cdt.dsf.gdb.service.IGDBGrouping.IGroupDMContext;
 import org.eclipse.cdt.dsf.gdb.service.command.IGDBControl;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
@@ -95,18 +101,34 @@ public class DsfTerminateCommand implements ITerminateHandler {
 			fExecutor.execute(new DsfRunnable() {
 				@Override
 				public void run() {
-					IProcessDMContext[] procDmcs = getProcessDMContexts(request.getElements());
-					canTerminate(procDmcs, new DataRequestMonitor<Boolean>(fExecutor, null) {
-						@Override
-						protected void handleCompleted() {
-							if (!isSuccess()) {
-								request.setEnabled(false);
-							} else {
-								request.setEnabled(getData());
-							}
-							request.done();
-						}
-					});
+					// <CUSTOMISATION - ASHLING> Getting the ProcessDMContexts via a requestmonitor.
+					// This was changed for handling the terminate on GroupDMContext
+					getProcessDMContexts(request.getElements(),
+							new DataRequestMonitor<IProcessDMContext[]>(ImmediateExecutor.getInstance(), null) {
+								@Override
+								protected void handleCompleted() {
+									if (isSuccess()) {
+										IProcessDMContext[] procDmcs = getData();
+										if (procDmcs != null) {
+											canTerminate(procDmcs, new DataRequestMonitor<Boolean>(fExecutor, null) {
+												@Override
+												protected void handleCompleted() {
+													if (!isSuccess()) {
+														request.setEnabled(false);
+													} else {
+														request.setEnabled(getData());
+													}
+													request.done();
+												}
+											});
+											return;
+										}
+									}
+									request.setEnabled(false);
+									request.done();
+								}
+							});
+					// <CUSTOMISATION>
 				}
 			});
 		}
@@ -146,18 +168,34 @@ public class DsfTerminateCommand implements ITerminateHandler {
 			fExecutor.execute(new DsfRunnable() {
 				@Override
 				public void run() {
-					IProcessDMContext[] procDmcs = getProcessDMContexts(request.getElements());
-					terminate(procDmcs, new RequestMonitor(fExecutor, null) {
-						@Override
-						protected void handleCompleted() {
-							if (!isSuccess()) {
-								request.setStatus(getStatus());
-								request.done();
-							} else {
-								waitForTermination(request);
-							}
-						}
-					});
+					// <CUSTOMISATION - ASHLING> Getting the ProcessDMContexts via a requestmonitor.
+					// This was changed for handling the terminate on GroupDMContext
+					getProcessDMContexts(request.getElements(),
+							new DataRequestMonitor<IProcessDMContext[]>(ImmediateExecutor.getInstance(), null) {
+								@Override
+								protected void handleCompleted() {
+									if (isSuccess()) {
+										IProcessDMContext[] procDmcs = getData();
+										if (procDmcs != null) {
+											terminate(procDmcs, new RequestMonitor(fExecutor, null) {
+												@Override
+												protected void handleCompleted() {
+													if (!isSuccess()) {
+														request.setStatus(getStatus());
+														request.done();
+													} else {
+														waitForTermination(request);
+													}
+												}
+											});
+											return;
+										}
+									}
+									request.done();
+								}
+							});
+					// <CUSTOMISATION>
+
 				}
 			});
 		}
@@ -230,18 +268,48 @@ public class DsfTerminateCommand implements ITerminateHandler {
 		}, 1, TimeUnit.MINUTES);
 	}
 
-	private IProcessDMContext[] getProcessDMContexts(Object[] elements) {
-		final Set<IProcessDMContext> procDmcs = new HashSet<>();
+	// <CUSTOMISATION - ASHLING> Getting the ProcessDMContexts via a requestmonitor.
+	// This was changed for handling the terminate on GroupDMContext
+	private void getProcessDMContexts(Object[] elements, DataRequestMonitor<IProcessDMContext[]> rm) {
+		final Set<IProcessDMContext> procDmcs = new CopyOnWriteArraySet<>();
+		CountingRequestMonitor crm = new CountingRequestMonitor(ImmediateExecutor.getInstance(), rm) {
+			@Override
+			protected void handleCompleted() {
+				if (isSuccess()) {
+					rm.setData(procDmcs.toArray(new IProcessDMContext[0]));
+				}
+				rm.done();
+			}
+		};
+		crm.setDoneCount(elements.length);
 		for (Object obj : elements) {
-			if (obj instanceof IDMVMContext) {
+			if (obj instanceof IDMVMContext && ((IDMVMContext) obj).getDMContext() instanceof IGroupDMContext) {
+				IRunControl runcontrol = fTracker.getService(IRunControl.class);
+				runcontrol.getExecutionContexts((IGroupDMContext) ((IDMVMContext) obj).getDMContext(),
+						new DataRequestMonitor<>(ImmediateExecutor.getInstance(), crm) {
+							@Override
+							protected void handleCompleted() {
+								if (isSuccess()) {
+									Arrays.asList(getData()).forEach(ie -> {
+										Optional.ofNullable(DMContexts.getAncestorOfType(ie, IProcessDMContext.class))
+												.ifPresent(pdmc -> procDmcs.add(pdmc));
+									});
+								}
+								crm.done();
+							}
+						});
+			} else if (obj instanceof IDMVMContext) {
 				IProcessDMContext procDmc = DMContexts.getAncestorOfType(((IDMVMContext) obj).getDMContext(),
 						IProcessDMContext.class);
 				if (procDmc != null) {
 					procDmcs.add(procDmc);
 				}
+				crm.done();
+			} else {
+				crm.done();
 			}
 		}
-		return procDmcs.toArray(new IProcessDMContext[procDmcs.size()]);
+		// <CUSTOMISATION>
 	}
 
 	private void canTerminate(IProcessDMContext[] procDmcs, DataRequestMonitor<Boolean> rm) {
