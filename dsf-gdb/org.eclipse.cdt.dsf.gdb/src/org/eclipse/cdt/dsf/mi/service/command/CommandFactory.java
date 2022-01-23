@@ -158,6 +158,7 @@ import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBShowNewConsole;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIGDBVersion;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInferiorTTYSet;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInfoOs;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIInfoVariables;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExec;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsole;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExecConsoleKill;
@@ -228,6 +229,7 @@ import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowExitCodeInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowLanguageInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBShowNewConsoleInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIGDBVersionInfo;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIGlobalVariableInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfoOsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListFeaturesInfo;
@@ -467,7 +469,10 @@ public class CommandFactory {
 	}
 
 	public ICommand<MIBreakListInfo> createMIBreakList(IBreakpointsTargetDMContext ctx) {
-		return new MIBreakList(ctx);
+		//<CUSTOMISATION> ASHLING - Ignoring context since there is a gdb issue with "-break-list --thread-group i1", thread selection automatically moves to halted thread
+		//git-lab riscfree-ui#296
+		return new MIBreakList(null);
+		//</CUSTOMISATION>
 	}
 
 	public ICommand<MIInfo> createMIBreakPasscount(IBreakpointsTargetDMContext ctx, int tracepoint, int passCount) {
@@ -890,7 +895,6 @@ public class CommandFactory {
 	public ICommand<MIInfo> createMIGDBSetStartupWithShell(ICommandControlDMContext ctx, boolean enable) {
 		return new MIGDBSetStartupWithShell(ctx, enable);
 	}
-
 	public ICommand<MIInfo> createMIGDBSetTargetAsync(ICommandControlDMContext ctx, boolean isSet) {
 		return new MIGDBSetTargetAsync(ctx, isSet);
 	}
@@ -1224,4 +1228,9 @@ public class CommandFactory {
 	public ICommand<MIVarUpdateInfo> createMIVarUpdate(ICommandControlDMContext dmc, String name) {
 		return new MIVarUpdate(dmc, name);
 	}
+
+	public ICommand<MIGlobalVariableInfo> createMIInfoVariables(ICommandControlDMContext dmc) {
+		return new MIInfoVariables(dmc);
+	}
+
 }
