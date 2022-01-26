@@ -78,6 +78,15 @@ public interface IDsfDebugUIConstants {
 	 */
 	public static final String PREF_COLOR_STALE_DATA_FOREGROUND = PLUGIN_ID + ".staledata.foreground"; //$NON-NLS-1$
 
+	//<CUSTOMISATION - ASHLING> Preference constant for enabling the group commands in Debug view.
+	/**
+	 * Preference for showing Group commands in Debug view.
+	 *
+	 * @since 2.0
+	 */
+	public static final String PREF_GROUP_CMDS_ENABLE = PLUGIN_ID + ".groupCmdsEnable"; //$NON-NLS-1$
+	//<CUSTOMISATION>
+
 	/**
 	 * Stale data foreground color preference key.
 	 *
