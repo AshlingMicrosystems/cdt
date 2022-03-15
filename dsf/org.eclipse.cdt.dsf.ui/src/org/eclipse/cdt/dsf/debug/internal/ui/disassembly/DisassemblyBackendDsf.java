@@ -273,13 +273,14 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 				fTargetFrameContext = null;
 				result.contextChanged = true;
 			}
-		} 
-		//<CUSTOMISATION - ASHLING> Change for ntot showing the previous Disassembly view for ContainerContext.
+		}
+		//<CUSTOMISATION - ASHLING> Change for not showing the previous Disassembly view for ContainerContext.
+		//Otherwise the view corresponding to previously selected stack or thread frame would be retained.
 		else if (dmContext instanceof IContainerDMContext) {
 			fTargetContext = null;
 			fTargetFrameContext = null;
 			result.contextChanged = true;
-		} 
+		}
 		//<CUSTOMISATION>
 		else if (dmContext instanceof IExecutionDMContext) {
 			// When switching to and between thread and application nodes.
@@ -625,8 +626,8 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 						});
 					}
 				} else {
-					final DataRequestMonitor<IInstruction[]> disassemblyRequest = new DataRequestMonitor<>(
-							executor, null) {
+					final DataRequestMonitor<IInstruction[]> disassemblyRequest = new DataRequestMonitor<>(executor,
+							null) {
 						@Override
 						public void handleCompleted() {
 							if (!isCanceled() && getData() != null) {
@@ -1117,8 +1118,7 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 		final IDisassemblyDMContext context = DMContexts.getAncestorOfType(fTargetContext, IDisassemblyDMContext.class);
 
 		final String finalFile = debuggerPath;
-		final DataRequestMonitor<IMixedInstruction[]> disassemblyRequest = new DataRequestMonitor<>(
-				executor, null) {
+		final DataRequestMonitor<IMixedInstruction[]> disassemblyRequest = new DataRequestMonitor<>(executor, null) {
 			@Override
 			public void handleCompleted() {
 				final IMixedInstruction[] data = getData();
