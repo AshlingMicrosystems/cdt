@@ -104,7 +104,7 @@ public class PTY {
 
 	/**
 	 * Create PTY for use with Eclipse console.
-	 * Identical to {@link PTY#PTY(Mode.CONSOLE)}.
+	 * Identical to <code>PTY(Mode.CONSOLE)</code>.
 	 */
 	public PTY() throws IOException {
 		this(Mode.CONSOLE);
@@ -292,10 +292,10 @@ public class PTY {
 			if (!isWindows) {
 				isConPTY = IS_CONPTY.CONPTY_NO;
 			}
-			// Force conpty off by default
-			// NOTE: to invert the default, the presence of the property must be checked too, not
-			// just the getBoolean return!
-			if (!Boolean.getBoolean("org.eclipse.cdt.core.conpty_enabled")) { //$NON-NLS-1$
+			// Disable ConPTY if the user needs to
+			boolean conPtyEnabled = Boolean
+					.parseBoolean(System.getProperty("org.eclipse.cdt.core.conpty_enabled", "true")); //$NON-NLS-1$ //$NON-NLS-2$
+			if (!conPtyEnabled) {
 				isConPTY = IS_CONPTY.CONPTY_NO;
 			}
 

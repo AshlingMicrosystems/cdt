@@ -62,7 +62,13 @@ public final class Arglets {
 	 * @author Martin Weber
 	 */
 	public static class NameOptionMatcher {
+		/**
+		 * Do not use the matcher field, it is not thread safe. Instead use pattern.matcher(input).
+		 * @deprecated
+		 */
+		@Deprecated(forRemoval = true)
 		final Matcher matcher;
+		final Pattern pattern;
 		final int nameGroup;
 
 		/**
@@ -72,14 +78,15 @@ public final class Arglets {
 		 * @param nameGroup - capturing group number defining name of an entry.
 		 */
 		public NameOptionMatcher(String pattern, int nameGroup) {
-			this.matcher = Pattern.compile(pattern).matcher(EMPTY_STR);
+			this.pattern = Pattern.compile(pattern);
+			this.matcher = this.pattern.matcher(EMPTY_STR);
 			this.nameGroup = nameGroup;
 		}
 
 		@SuppressWarnings("nls")
 		@Override
 		public String toString() {
-			return "NameOptionMatcher [matcher=" + this.matcher + ", nameGroup=" + this.nameGroup + "]";
+			return "NameOptionMatcher [pattern=" + this.pattern + ", nameGroup=" + this.nameGroup + "]";
 		}
 	}
 
@@ -99,13 +106,8 @@ public final class Arglets {
 		/**
 		 * Constructor.
 		 *
-		 * @param pattern    - regular expression pattern being parsed by the parser.
-		 * @param nameGroup  - capturing group number defining name of an entry.
-		 * @param valueGroup - capturing group number defining value of an entry.
-		 */
-		/**
-		 * @param pattern
-		 * @param nameGroup
+		 * @param pattern  regular expression pattern being parsed by the parser.
+		 * @param nameGroup the number of the value group
 		 * @param valueGroup the number of the value group, or {@code -1} for a pattern
 		 *                   that does not recognize a macro value
 		 */
@@ -117,7 +119,7 @@ public final class Arglets {
 		@SuppressWarnings("nls")
 		@Override
 		public String toString() {
-			return "NameValueOptionMatcher [matcher=" + this.matcher + ", nameGroup=" + this.nameGroup + ", valueGroup="
+			return "NameValueOptionMatcher [pattern=" + this.pattern + ", nameGroup=" + this.nameGroup + ", valueGroup="
 					+ this.valueGroup + "]";
 		}
 	}
@@ -134,9 +136,8 @@ public final class Arglets {
 		protected final int processArgument(IArgumentCollector resultCollector, String args,
 				NameValueOptionMatcher[] optionMatchers) {
 			for (NameValueOptionMatcher oMatcher : optionMatchers) {
-				final Matcher matcher = oMatcher.matcher;
+				final Matcher matcher = oMatcher.pattern.matcher(args);
 
-				matcher.reset(args);
 				if (matcher.lookingAt()) {
 					final String name = matcher.group(oMatcher.nameGroup);
 					final String value = oMatcher.valueGroup == -1 ? null : matcher.group(oMatcher.valueGroup);
@@ -159,9 +160,8 @@ public final class Arglets {
 		 */
 		protected final int processArgument(IArgumentCollector resultCollector, String argsLine,
 				NameOptionMatcher optionMatcher) {
-			final Matcher oMatcher = optionMatcher.matcher;
+			final Matcher oMatcher = optionMatcher.pattern.matcher(argsLine);
 
-			oMatcher.reset(argsLine);
 			if (oMatcher.lookingAt()) {
 				final String name = oMatcher.group(1);
 				resultCollector.addUndefine(name);
@@ -185,9 +185,8 @@ public final class Arglets {
 		protected final int processArgument(boolean isSystemIncludePath, IArgumentCollector resultCollector, IPath cwd,
 				String argsLine, NameOptionMatcher[] optionMatchers) {
 			for (NameOptionMatcher oMatcher : optionMatchers) {
-				final Matcher matcher = oMatcher.matcher;
+				final Matcher matcher = oMatcher.pattern.matcher(argsLine);
 
-				matcher.reset(argsLine);
 				if (matcher.lookingAt()) {
 					String name = matcher.group(oMatcher.nameGroup);
 					// workaround for relative path by cmake bug
@@ -221,9 +220,8 @@ public final class Arglets {
 		protected final int processArgument(IArgumentCollector resultCollector, IPath cwd, String argsLine,
 				NameOptionMatcher[] optionMatchers) {
 			for (NameOptionMatcher oMatcher : optionMatchers) {
-				final Matcher matcher = oMatcher.matcher;
+				final Matcher matcher = oMatcher.pattern.matcher(argsLine);
 
-				matcher.reset(argsLine);
 				if (matcher.lookingAt()) {
 					String name = matcher.group(oMatcher.nameGroup);
 					resultCollector.addIncludeFile(name);
@@ -246,9 +244,8 @@ public final class Arglets {
 		protected final int processArgument(IArgumentCollector resultCollector, IPath cwd, String argsLine,
 				NameOptionMatcher[] optionMatchers) {
 			for (NameOptionMatcher oMatcher : optionMatchers) {
-				final Matcher matcher = oMatcher.matcher;
+				final Matcher matcher = oMatcher.pattern.matcher(argsLine);
 
-				matcher.reset(argsLine);
 				if (matcher.lookingAt()) {
 					String name = matcher.group(oMatcher.nameGroup);
 					resultCollector.addMacroFile(name);
@@ -365,29 +362,6 @@ public final class Arglets {
 	}
 
 	////////////////////////////////////////////////////////////////////
-	/**
-	 * A tool argument parser capable to parse a armcc-compiler system include path
-	 * argument: {@code -Jdir}.
-	 */
-	// TODO move this to the arm plugin
-	public static class SystemIncludePath_armcc extends IncludePathGeneric implements IArglet {
-		@SuppressWarnings("nls")
-		static final NameOptionMatcher[] optionMatchers = {
-				/* quoted directory */
-				new NameOptionMatcher("-J" + "([\"'])(.+?)\\1", 2),
-				/* unquoted directory */
-				new NameOptionMatcher("-J" + "([^\\s]+)", 1), };
-
-		/*-
-		 * @see org.eclipse.cdt.jsoncdb.IArglet#processArgs(java.lang.String)
-		 */
-		@Override
-		public int processArgument(IArgumentCollector resultCollector, IPath cwd, String argsLine) {
-			return processArgument(true, resultCollector, cwd, argsLine, optionMatchers);
-		}
-	}
-
-	////////////////////////////////////////////////////////////////////
 	// POSIX compatible option parsers
 	////////////////////////////////////////////////////////////////////
 
@@ -395,15 +369,29 @@ public final class Arglets {
 	////////////////////////////////////////////////////////////////////
 	// compiler built-ins detection
 	////////////////////////////////////////////////////////////////////
+
+	/**
+	 * @deprecated use <code>BuiltinDetectionArgsGeneric</code> instead
+	 */
+	@Deprecated
+	public static abstract class BuiltinDetctionArgsGeneric {
+		protected int processArgument(IArgumentCollector resultCollector, String argsLine, Matcher[] optionMatchers) {
+			throw new IllegalStateException(
+					"This class is deprecated - extend class BuiltinDetectionArgsGeneric instead"); //$NON-NLS-1$
+		}
+	}
+
 	/**
 	 * A tool argument parser capable to parse arguments from the command-line that
 	 * affect built-in detection.
+	 * @since 1.2
 	 */
-	public static abstract class BuiltinDetctionArgsGeneric {
+	public static abstract class BuiltinDetectionArgsGeneric extends BuiltinDetctionArgsGeneric {
 		/**
 		 * @see org.eclipse.cdt.jsoncdb.core.participant.IArglet#processArgument(IArgumentCollector,
 		 *      IPath, String)
 		 */
+		@Override
 		protected final int processArgument(IArgumentCollector resultCollector, String argsLine,
 				Matcher[] optionMatchers) {
 			for (Matcher matcher : optionMatchers) {
@@ -460,7 +448,7 @@ public final class Arglets {
 	 * A tool argument parser capable to parse a GCC option to specify paths
 	 * {@code --sysrooot}.
 	 */
-	public static class Sysroot_GCC extends BuiltinDetctionArgsGeneric implements IArglet {
+	public static class Sysroot_GCC extends BuiltinDetectionArgsGeneric implements IArglet {
 		@SuppressWarnings("nls")
 		private static final Matcher[] optionMatchers = {
 				/* "--sysroot=" quoted directory */
@@ -488,10 +476,10 @@ public final class Arglets {
 	 * A tool argument parser capable to parse a Clang option to specify the compilation target {@code --target}.
 	 * @since 1.1
 	 */
-	public static class Target_Clang extends BuiltinDetctionArgsGeneric implements IArglet {
+	public static class Target_Clang extends BuiltinDetectionArgsGeneric implements IArglet {
 		private static final Matcher[] optionMatchers = {
 				/* "--target=" triple */
-				Pattern.compile("--target=\\w+(-\\w+)*").matcher("") }; //$NON-NLS-1$ //$NON-NLS-2$
+				Pattern.compile("--target=\\w+(-\\w+)*").matcher(EMPTY_STR) }; //$NON-NLS-1$
 
 		/*-
 		* @see de.marw.cmake.cdt.lsp.IArglet#processArgs(java.lang.String)
@@ -507,10 +495,15 @@ public final class Arglets {
 	 * A tool argument parser capable to parse a GCC option to specify the language
 	 * standard {@code -std=xxx}.
 	 */
-	public static class LangStd_GCC extends BuiltinDetctionArgsGeneric implements IArglet {
+	public static class LangStd_GCC extends BuiltinDetectionArgsGeneric implements IArglet {
 		@SuppressWarnings("nls")
 		private static final Matcher[] optionMatchers = { Pattern.compile("-std=\\S+").matcher(EMPTY_STR),
-				Pattern.compile("-ansi").matcher(EMPTY_STR), };
+				Pattern.compile("-ansi").matcher(EMPTY_STR),
+				Pattern.compile("-fPIC", Pattern.CASE_INSENSITIVE).matcher(EMPTY_STR),
+				Pattern.compile("-fPIE", Pattern.CASE_INSENSITIVE).matcher(EMPTY_STR),
+				Pattern.compile("-fstack-protector\\S+").matcher(EMPTY_STR),
+				Pattern.compile("-march=\\\\S+").matcher(EMPTY_STR), Pattern.compile("-mcpu=\\\\S+").matcher(EMPTY_STR),
+				Pattern.compile("-mtune=\\\\S+").matcher(EMPTY_STR), Pattern.compile("-pthread").matcher(EMPTY_STR), };
 
 		/*-
 		 * @see org.eclipse.cdt.jsoncdb.IArglet#processArgs(java.lang.String)

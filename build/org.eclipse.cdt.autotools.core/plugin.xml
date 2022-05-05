@@ -652,8 +652,17 @@
             class="org.eclipse.cdt.managedbuilder.language.settings.providers.GCCBuildCommandParser"
             id="org.eclipse.cdt.autotools.core.LibtoolGCCBuildCommandParser"
             name="%LibtoolGCCBuildOutputParser.name"
-            parameter="(libtool:\s+compile:\s+)?((g?cc)|([gc]\+\+)|(clang))"
+            parameter="(libtool:\s+compile:\s+)?([^/\\\\]*)((g?cc)|([gc]\+\+)|(clang))"
             prefer-non-shared="true">
       </provider>
    </extension>
+ <extension
+       point="org.eclipse.e4.ui.css.swt.theme">
+    <stylesheet
+          uri="css/e4-dark_autotools.css">
+       <themeid
+             refid="org.eclipse.e4.ui.css.theme.e4_dark">
+       </themeid>
+    </stylesheet>
+ </extension>
 </plugin>

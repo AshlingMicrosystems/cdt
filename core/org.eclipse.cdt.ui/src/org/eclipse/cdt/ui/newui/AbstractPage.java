@@ -21,7 +21,6 @@ package org.eclipse.cdt.ui.newui;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -151,7 +150,7 @@ public abstract class AbstractPage extends PropertyPage implements IPreferencePa
 
 	private static final String PREF_ASK_REINDEX = "askReindex"; //$NON-NLS-1$
 
-	private Map<URL, Image> loadedIcons = new HashMap<>();
+	private List<Image> loadedIcons = new ArrayList<>();
 	private static Map<Class<? extends AbstractPage>, Class<? extends ICPropertyTab>> recentTabs = new HashMap<>();
 
 	private final Image IMG_WARN = CDTSharedImages.getImage(CDTSharedImages.IMG_OBJS_REFACTORING_WARNING);
@@ -168,20 +167,60 @@ public abstract class AbstractPage extends PropertyPage implements IPreferencePa
 	/*
 	 * Bookeeping variables
 	 */
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected boolean noContentOnPage = false;
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected boolean displayedConfig = false;
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected IResource internalElement = null;
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected boolean isProject = false;
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected boolean isFolder = false;
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected boolean isFile = false;
 
 	// tabs
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected TabFolder folder;
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected ArrayList<InternalTab> itabs = new ArrayList<>();
+	/**
+	 * @deprecated This field was never meant to be API. This field will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected ICPropertyTab currentTab;
 
 	private static boolean isNewOpening = true;
 
+	/**
+	 * @deprecated This class was never meant to be API. This class will be made private.
+	 */
+	@Deprecated(forRemoval = true)
 	protected class InternalTab {
 		Composite comp;
 		String text;
@@ -567,7 +606,7 @@ public abstract class AbstractPage extends PropertyPage implements IPreferencePa
 	 *   which do not share ICProjectDescription instance.
 	 *   But some changes may be saved wrong if they are affected
 	 *   by data from another property pages (Discovery options etc).
-
+	 *
 	 *   To enable 2nd mode, just create the following file:
 	 *   <workspace>/.metadata/.plugins/org.eclipse.cdt.ui/apply_mode
 	 */
@@ -1052,7 +1091,7 @@ public abstract class AbstractPage extends PropertyPage implements IPreferencePa
 		if (displayedConfig)
 			forEach(ICPropertyTab.DISPOSE);
 		// Dispose any loaded images
-		for (Image img : loadedIcons.values())
+		for (Image img : loadedIcons)
 			img.dispose();
 		loadedIcons.clear();
 
@@ -1196,7 +1235,6 @@ public abstract class AbstractPage extends PropertyPage implements IPreferencePa
 
 	private Image getIcon(IConfigurationElement config) {
 		ImageDescriptor idesc = null;
-		URL url = null;
 		String iconName = config.getAttribute(IMAGE_NAME);
 		if (iconName != null) {
 			idesc = ResourceLocator.imageDescriptorFromBundle(
@@ -1206,7 +1244,7 @@ public abstract class AbstractPage extends PropertyPage implements IPreferencePa
 		if (idesc == null)
 			return null;
 		Image img = idesc.createImage();
-		loadedIcons.put(url, img);
+		loadedIcons.add(img);
 		return img;
 	}
 

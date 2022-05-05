@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2021 QNX Software Systems and others.
+ * Copyright (c) 2007, 2022 QNX Software Systems and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -25,6 +25,8 @@
  *     John Dallaway - Use 'reset and halt' command (Bug 535163)
  *     John Dallaway - Eliminate deprecated API (Bug 566462)
  *     John Dallaway - Set executable file (Bug 457697)
+ *     John Dallaway - Initialize memory data before connecting to target (Bug 575934)
+ *     John Dallaway - Support multiple remote debug protocols (Bug 535143)
  *******************************************************************************/
 package org.eclipse.cdt.debug.gdbjtag.core;
 
@@ -225,6 +227,8 @@ public class GDBJtagDSFFinalLaunchSequence extends FinalLaunchSequence {
 					"stepRetrieveJTAGDevice", //$NON-NLS-1$
 					"stepSetExecutableFile", //$NON-NLS-1$
 					"stepLoadSymbols", //$NON-NLS-1$
+					"stepInitializeMemory", //$NON-NLS-1$
+
 					"stepConnectToTarget", //$NON-NLS-1$
 					"stepResetBoard", //$NON-NLS-1$
 					"stepDelayStartup", //$NON-NLS-1$
@@ -234,7 +238,6 @@ public class GDBJtagDSFFinalLaunchSequence extends FinalLaunchSequence {
 
 					"stepUpdateContainer", //$NON-NLS-1$
 
-					"stepInitializeMemory", //$NON-NLS-1$
 					"stepSetArguments", //$NON-NLS-1$
 					"stepSetEnvironmentVariables", //$NON-NLS-1$
 					"stepStartTrackingBreakpoints", //$NON-NLS-1$
@@ -419,8 +422,10 @@ public class GDBJtagDSFFinalLaunchSequence extends FinalLaunchSequence {
 							connection = String.format("%s:%d", ipAddress, portNumber); //$NON-NLS-1$
 						}
 					}
+					String protocol = CDebugUtils.getAttribute(getAttributes(), IGDBJtagConstants.ATTR_PROTOCOL,
+							IGDBJtagConstants.DEFAULT_PROTOCOL);
 					IGDBJtagConnection device = (IGDBJtagConnection) fGdbJtagDevice;
-					device.doRemote(connection, commands);
+					device.doTarget(protocol, connection, commands);
 					queueCommands(commands, rm);
 				} else {
 					rm.done();

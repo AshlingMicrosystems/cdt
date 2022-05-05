@@ -1525,8 +1525,7 @@ public class GDBProcesses_7_0 extends AbstractDsfService
 					});
 		} else {
 
-			final DataRequestMonitor<IMIContainerDMContext[]> addExitedDRM = new ImmediateDataRequestMonitor<IMIContainerDMContext[]>(
-					rm) {
+			final DataRequestMonitor<IMIContainerDMContext[]> addExitedDRM = new ImmediateDataRequestMonitor<>(rm) {
 				@Override
 				protected void handleCompleted() {
 					List<IMIContainerDMContext> containerDmcs = new ArrayList<>(Arrays.asList(getData()));
