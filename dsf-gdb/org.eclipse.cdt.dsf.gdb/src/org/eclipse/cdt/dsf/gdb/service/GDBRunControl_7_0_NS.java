@@ -1879,6 +1879,18 @@ public class GDBRunControl_7_0_NS extends AbstractDsfService
 	 */
 	@DsfServiceEventHandler
 	public void eventDispatched(final MIStoppedEvent e) {
+		//<CUSTOMISATION-ASHLING>Resend the events at the thread context level.
+		// Since the upcoming listeners are handling it at the thread level git-lab#900
+		if (e.getDMContext() instanceof IMIContainerDMContext && e instanceof MIErrorEvent) {
+			IMIContainerDMContext containerCtx = (IMIContainerDMContext) e.getDMContext();
+			for (IMIExecutionDMContext threadContext : fThreadRunStates.keySet()) {
+				if (DMContexts.isAncestorOf(threadContext, containerCtx)) {
+					eventDispatched(((MIErrorEvent) e).createEventForChildCtx(threadContext));
+				}
+			}
+			return;
+		}
+		//</CUSTOMISATION>
 		// A disabled signal event is due to interrupting the target
 		// to set a breakpoint.  This can happen during a run-to-line
 		// or step-into operation, so we need to check it first.
