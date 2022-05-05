@@ -18,7 +18,12 @@
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.launching;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -170,7 +175,7 @@ public class GdbLaunch extends DsfLaunch implements ITracedLaunch, ITargetedLaun
 		// To maintain a mapping of memory contexts to the corresponding memory
 		// retrieval in this session
 		try {
-			fExecutor.submit(new Callable<>() {
+			fExecutor.submit(new Callable<Object>() {
 				@Override
 				public Object call() throws CoreException {
 					fMemRetrievalManager = new GdbMemoryBlockRetrievalManager(GdbLaunchDelegate.GDB_DEBUG_MODEL_ID,
@@ -224,7 +229,6 @@ public class GdbLaunch extends DsfLaunch implements ITracedLaunch, ITargetedLaun
 			attributes.put(DebugPlugin.ATTR_LAUNCH_TIMESTAMP, Long.toString(System.currentTimeMillis()));
 			Optional.ofNullable(gdbBackend.getGDBWorkingDirectory()).map(IPath::toOSString)
 					.ifPresent(dir -> attributes.put(DebugPlugin.ATTR_WORKING_DIRECTORY, dir));
-
 			// Need to go through DebugPlugin.newProcess so that we can use
 			// the overrideable process factory to allow others to override.
 			// First set attribute to specify we want to create the gdb process.
@@ -544,8 +548,43 @@ public class GdbLaunch extends DsfLaunch implements ITracedLaunch, ITargetedLaun
 	 * by the launch. This environment is used as the environment to run GDB in
 	 * and is different than the launch environment in ILaunchManager.ATTR_ENVIRONMENT_VARIABLES
 	 * which is used to run the inferior in.
+	 * Read from the specified stream and return what was read.
 	 *
 	 * Essentially this is getting the build environment of the associated project.
+	 * @param stream
+	 *            The input stream to be used to read the data. This method will
+	 *            close the stream.
+	 * @return The data read from the stream
+	 * @throws IOException
+	 *             If an IOException happens when reading the stream
+	 */
+	private static String readStream(InputStream stream) throws IOException {
+		StringBuilder cmdOutput = new StringBuilder(200);
+		try {
+			Reader r = new InputStreamReader(stream);
+			BufferedReader reader = new BufferedReader(r);
+
+			String line;
+			while ((line = reader.readLine()) != null) {
+				cmdOutput.append(line);
+				cmdOutput.append('\n');
+			}
+			return cmdOutput.toString();
+		} finally {
+			// Cleanup to avoid leaking pipes
+			// Bug 345164
+			if (stream != null) {
+				try {
+					stream.close();
+				} catch (IOException e) {
+				}
+			}
+		}
+	}
+
+	/**
+	 * Gets the CDT environment from the CDT project's configuration referenced
+	 * by the launch
 	 *
 	 * @since 5.0
 	 */
