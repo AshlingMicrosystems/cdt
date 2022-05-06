@@ -49,6 +49,7 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.ui.AbstractLaunchConfigurationTab;
+import org.eclipse.debug.ui.ILaunchConfigurationDialog;
 import org.eclipse.debug.ui.StringVariableSelectionDialog;
 import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.PixelConverter;
@@ -64,6 +65,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
@@ -91,6 +93,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 	protected Button fUpdateThreadlistOnSuspend;
 	private Button remoteTimeoutEnabled;
 	private Text remoteTimeoutValue;
+	//	<CUSTOMISATION - ASHLING> - GitLab#869
+	protected WorkingDirectoryBlock fWorkingDirectoryBlock = new WorkingDirectoryBlock();
 
 	@Override
 	public String getName() {
@@ -138,6 +142,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 		// Attach context help to this tab.
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(getControl(),
 				ICDTLaunchHelpContextIds.LAUNCH_CONFIGURATION_DIALOG_DEBBUGER_TAB);
+		//		<CUSTOMISATION - ASHLING> - GitLab#869
+		fWorkingDirectoryBlock.createControl(comp);
 	}
 
 	private void browseButtonSelected(String title, Text text) {
@@ -255,13 +261,16 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 		Arrays.stream(availableDevices).map(GDBJtagDeviceContribution::getDeviceName).sorted()
 				.forEach(name -> jtagDevice.add(name));
 
-		jtagDevice.addModifyListener(new ModifyListener() {
+		//		<CUSTOMISATION - ASHLING> - GitLab#869
+		jtagDevice.addSelectionListener(new SelectionAdapter() {
+
 			@Override
-			public void modifyText(ModifyEvent e) {
+			public void widgetSelected(SelectionEvent e) {
 				updateDeviceIpPort(jtagDevice.getText());
-				scheduleUpdateJob(); // provides much better performance for Text listeners
+				scheduleUpdateJob();
 			}
 		});
+		//		<CUSTOMISATION - ASHLING> - GitLab#869
 
 		remoteConnectionParameters = new Composite(group, SWT.NO_TRIM | SWT.NO_FOCUS);
 		remoteConnectParmsLayout = new StackLayout();
@@ -301,9 +310,16 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 	 * @param text
 	 */
 	protected void updateDeviceIpPort(String selectedDeviceName) {
-		if (selectedDeviceName.equals(savedJtagDevice)) {
-			return;
-		}
+
+		/*
+		* <CUSTOMISATION - ASHLING> - GitLab#869 Keep "JTAG Device: OpenOCD(via pipe) - | openocd --pipe" as the default value
+		*
+		* if (selectedDeviceName.equals(savedJtagDevice)) {
+		*			return;
+		*	}
+		*
+		* <CUSTOMISATION - ASHLING> - GitLab#869 Keep "JTAG Device: OpenOCD(via pipe) - | openocd --pipe" as the default value
+		*/
 		GDBJtagDeviceContribution[] availableDevices = GDBJtagDeviceContributionFactory.getInstance()
 				.getGDBJtagDeviceContribution();
 		IGDBJtagDevice selectedDevice = null;
@@ -430,6 +446,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 					}
 				}
 				jtagDevice.select(index);
+				//	<CUSTOMISATION - ASHLING> - GitLab#869
+				jtagDevice.notifyListeners(SWT.Selection, new Event());
 			} else {
 				String storedAddress = ""; //$NON-NLS-1$
 				int storedPort = -1;
@@ -441,11 +459,17 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 						storedPort = configuration.getAttribute(IGDBJtagConstants.ATTR_PORT_NUMBER, -1);
 						storedConnection = configuration.getAttribute(IGDBJtagConstants.ATTR_CONNECTION, (String) null);
 						jtagDevice.select(i);
+						//<CUSTOMISATION - ASHLING> - GitLab#869
+						jtagDevice.notifyListeners(SWT.Selection, new Event());
 						break;
 					}
 				}
-
-				String connectionText = IGDBJtagConstants.DEFAULT_CONNECTION;
+				//<CUSTOMISATION - ASHLING> - GitLab#869
+				String connectionText = connection.getText();
+				if (connectionText.isEmpty()) {
+					connectionText = IGDBJtagConstants.DEFAULT_CONNECTION;
+				}
+				//<CUSTOMISATION - ASHLING> - GitLab#869
 				if (null != storedConnection) { // if a connection URI
 					try {
 						connectionText = new URI(storedConnection).getSchemeSpecificPart();
@@ -470,6 +494,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 
 			remoteTimeoutChanged();
 			useRemoteChanged();
+			//<CUSTOMISATION - ASHLING> - GitLab#869
+			fWorkingDirectoryBlock.initializeFrom(configuration);
 		} catch (CoreException e) {
 			Activator.getDefault().getLog().log(e.getStatus());
 		}
@@ -523,6 +549,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 				remoteTimeoutEnabled.getSelection());
 		configuration.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REMOTE_TIMEOUT_VALUE,
 				remoteTimeoutValue.getText().trim());
+		//<CUSTOMISATION - ASHLING> - GitLab#869
+		fWorkingDirectoryBlock.performApply(configuration);
 	}
 
 	@Override
@@ -530,14 +558,25 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 		String defaultGdbCommand = Platform.getPreferencesService().getString(GdbPlugin.PLUGIN_ID,
 				IGdbDebugPreferenceConstants.PREF_DEFAULT_GDB_COMMAND, "", null); //$NON-NLS-1$
 		configuration.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUG_NAME, defaultGdbCommand);
-
 		configuration.setAttribute(IGDBJtagConstants.ATTR_USE_REMOTE_TARGET,
 				IGDBJtagConstants.DEFAULT_USE_REMOTE_TARGET);
-		configuration.setAttribute(IGDBJtagConstants.ATTR_JTAG_DEVICE_ID, DEFAULT_JTAG_DEVICE_ID);
+		//<CUSTOMISATION - ASHLING> - GitLab#869
+		String defaultJTagDeviceID = Platform.getPreferencesService().getString(Activator.PLUGIN_ID,
+				IGDBJtagConstants.ATTR_JTAG_DEVICE_ID, "", null); //$NON-NLS-1$
+		configuration.setAttribute(IGDBJtagConstants.ATTR_JTAG_DEVICE_ID, defaultJTagDeviceID);
+		//<CUSTOMISATION - ASHLING> - GitLab#869
 		configuration.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_START_MODE,
 				IGDBLaunchConfigurationConstants.DEBUGGER_MODE_REMOTE);
 		configuration.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_UPDATE_THREADLIST_ON_SUSPEND,
 				IGDBLaunchConfigurationConstants.DEBUGGER_UPDATE_THREADLIST_ON_SUSPEND_DEFAULT);
 	}
+
+	//<CUSTOMISATION - ASHLING> - GitLab#869
+	@Override
+	public void setLaunchConfigurationDialog(ILaunchConfigurationDialog dialog) {
+		super.setLaunchConfigurationDialog(dialog);
+		fWorkingDirectoryBlock.setLaunchConfigurationDialog(dialog);
+	}
+	//<CUSTOMISATION - ASHLING> - GitLab#869
 
 }
