@@ -48,7 +48,6 @@ import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.service.ICachingService;
-import org.eclipse.cdt.dsf.debug.service.IDsfDebugServicesFactory;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IStack.IFrameDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommand;
@@ -60,9 +59,6 @@ import org.eclipse.cdt.dsf.debug.service.command.IEventListener;
 import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbDebugOptions;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
-import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
-import org.eclipse.cdt.dsf.gdb.launching.LaunchUtils;
-import org.eclipse.cdt.dsf.gdb.service.GdbDebugServicesFactory;
 import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
@@ -82,11 +78,9 @@ import org.eclipse.cdt.dsf.service.AbstractDsfService;
 import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
-import org.eclipse.debug.core.ILaunch;
 import org.eclipse.osgi.util.NLS;
 
 /**
@@ -107,7 +101,6 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 	private TxThread fTxThread;
 	private RxThread fRxThread;
 	private ErrorThread fErrorThread;
-	private final int fNumberOfConcurrentCommands;
 
 	// MI did not always support the --thread/--frame options
 	// This boolean is used to know if we should use -thread-select and -stack-select-frame instead
@@ -197,12 +190,6 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 			fUseThreadAndFrameOptions = true;
 		}
 		fCommandFactory = factory;
-
-		if (isConcurrentCommandsSupported()) {
-			fNumberOfConcurrentCommands = NUMBER_CONCURRENT_COMMANDS;
-		} else {
-			fNumberOfConcurrentCommands = 1;
-		}
 	}
 
 	/**
@@ -394,21 +381,23 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 			fCommandQueue.add(handle);
 			processCommandQueued(handle);
 
-			// In a separate dispatch cycle.  This allows command listeners
-			// to respond to the command queued event.
-			getExecutor().execute(new DsfRunnable() {
-				@Override
-				public void run() {
-					processNextQueuedCommand();
-				}
-			});
+			if (fRxCommands.size() < NUMBER_CONCURRENT_COMMANDS) {
+				// In a separate dispatch cycle.  This allows command listeners
+				// to respond to the command queued event.
+				getExecutor().execute(new DsfRunnable() {
+					@Override
+					public void run() {
+						processNextQueuedCommand();
+					}
+				});
+			}
 		}
 
 		return handle;
 	}
 
 	private void processNextQueuedCommand() {
-		if (!fCommandQueue.isEmpty() && fRxCommands.size() < fNumberOfConcurrentCommands) {
+		if (!fCommandQueue.isEmpty()) {
 			final CommandHandle handle = fCommandQueue.remove(0);
 			if (handle != null) {
 				processCommandSent(handle);
@@ -1274,35 +1263,5 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 		// Issue a refresh event for any services or UI that is not an ICachingService
 		getSession().dispatchEvent(new RefreshAllDMEvent(getContext()), getProperties());
 		rm.done();
-	}
-
-	private String getGdbVersion() {
-		ILaunch launch = (ILaunch) getSession().getModelAdapter(ILaunch.class);
-		if (launch instanceof GdbLaunch) {
-			IDsfDebugServicesFactory servicesFactory = ((GdbLaunch) launch).getServiceFactory();
-			if (servicesFactory instanceof GdbDebugServicesFactory) {
-				return ((GdbDebugServicesFactory) servicesFactory).getVersion();
-			}
-		}
-		return null;
-	}
-
-	private boolean isConcurrentCommandsSupported() {
-		if (Platform.getOS().equals(Platform.OS_LINUX)) {
-			// Check if GDB client version is in range [8.3.50, 12.1)
-			// See https://sourceware.org/bugzilla/show_bug.cgi?id=28711 for details
-
-			String version = getGdbVersion();
-			if (version == null || version.isEmpty()) {
-				// Unknown version, assume it's affected
-				return false;
-			}
-			if (LaunchUtils.compareVersions(version, "8.3.50") >= 0 //$NON-NLS-1$
-					&& LaunchUtils.compareVersions(version, "12.1") < 0) { //$NON-NLS-1$
-				// Within problematic version range
-				return false;
-			}
-		}
-		return true;
 	}
 }
