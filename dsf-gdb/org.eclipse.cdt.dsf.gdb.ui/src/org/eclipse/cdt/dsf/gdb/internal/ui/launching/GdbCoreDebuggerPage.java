@@ -28,6 +28,8 @@ import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.ui.StringVariableSelectionDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CTabFolder;
+import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -39,8 +41,6 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Text;
 
 /**
@@ -50,7 +50,7 @@ import org.eclipse.swt.widgets.Text;
  * @since 2.0
  */
 public class GdbCoreDebuggerPage extends AbstractCDebuggerPage implements Observer {
-	protected TabFolder fTabFolder;
+	protected CTabFolder fTabFolder;
 	protected Text fGDBCommandText;
 	protected Text fGDBInitText;
 
@@ -62,7 +62,7 @@ public class GdbCoreDebuggerPage extends AbstractCDebuggerPage implements Observ
 		Composite comp = new Composite(parent, SWT.NONE);
 		comp.setLayout(new GridLayout());
 		comp.setLayoutData(new GridData(GridData.FILL_BOTH));
-		fTabFolder = new TabFolder(comp, SWT.NONE);
+		fTabFolder = new CTabFolder(comp, SWT.NONE);
 		fTabFolder.setLayoutData(new GridData(GridData.FILL_BOTH | GridData.GRAB_VERTICAL));
 		createTabs(fTabFolder);
 		fTabFolder.setSelection(0);
@@ -164,13 +164,13 @@ public class GdbCoreDebuggerPage extends AbstractCDebuggerPage implements Observ
 		return block;
 	}
 
-	public void createTabs(TabFolder tabFolder) {
+	public void createTabs(CTabFolder tabFolder) {
 		createMainTab(tabFolder);
 		createSolibTab(tabFolder);
 	}
 
-	public void createMainTab(TabFolder tabFolder) {
-		TabItem tabItem = new TabItem(tabFolder, SWT.NONE);
+	public void createMainTab(CTabFolder tabFolder) {
+		CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
 		tabItem.setText(LaunchUIMessages.getString("GDBDebuggerPage.main_tab_name")); //$NON-NLS-1$
 		Composite comp = ControlFactory.createCompositeEx(tabFolder, 1, GridData.FILL_BOTH);
 		((GridLayout) comp.getLayout()).makeColumnsEqualWidth = false;
@@ -283,8 +283,8 @@ public class GdbCoreDebuggerPage extends AbstractCDebuggerPage implements Observ
 		label.setLayoutData(gd);
 	}
 
-	public void createSolibTab(TabFolder tabFolder) {
-		TabItem tabItem = new TabItem(tabFolder, SWT.NONE);
+	public void createSolibTab(CTabFolder tabFolder) {
+		CTabItem tabItem = new CTabItem(tabFolder, SWT.NONE);
 		tabItem.setText(LaunchUIMessages.getString("GDBDebuggerPage.shared_libraries")); //$NON-NLS-1$
 		Composite comp = ControlFactory.createCompositeEx(fTabFolder, 1, GridData.FILL_BOTH);
 		comp.setFont(tabFolder.getFont());
