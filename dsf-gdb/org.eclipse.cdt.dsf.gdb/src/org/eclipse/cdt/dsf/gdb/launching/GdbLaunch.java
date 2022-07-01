@@ -535,6 +535,13 @@ public class GdbLaunch extends DsfLaunch implements ITracedLaunch, ITargetedLaun
 		}
 
 		String gdbPath = getGDBPath().toOSString();
+		/*
+		 *  //<CUSTOMISATION - ASHLING> Cannot launch when RiscFree installed in a directory contain space -GitLab #839
+		 */
+		gdbPath = "\"" + gdbPath + "\""; //$NON-NLS-1$//$NON-NLS-2$
+		/*
+		 *  //<CUSTOMISATION - ASHLING> Cannot launch when RiscFree installed in a directory contain space -GitLab #839
+		 */
 		String[] launchEnvironment = getLaunchEnvironment();
 
 		String gdbVersion = LaunchUtils.getGDBVersion(gdbPath, launchEnvironment);
