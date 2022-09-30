@@ -90,6 +90,17 @@ public class MIDataDisassemble extends MICommand<MIDataDisassembleInfo> {
 		}
 	}
 
+	public MIDataDisassemble(IDisassemblyDMContext ctx, String addr, int mode) {
+		super(ctx, "-data-disassemble"); //$NON-NLS-1$
+		setOptions(new String[] { "-a", addr }); //$NON-NLS-1$ //$NON-NLS-2$
+
+		if (mode >= MIN_MODE && mode <= MAX_MODE) {
+			setParameters(new String[] { Integer.toString(mode) });
+		} else {
+			throw new IllegalArgumentException(MODE_OUT_OF_RANGE + mode);
+		}
+	}
+
 	public MIDataDisassemble(IDisassemblyDMContext ctx, String file, int linenum, int lines, boolean mode) {
 		this(ctx, file, linenum, lines, mode ? DATA_DISASSEMBLE_MODE_MIXED : DATA_DISASSEMBLE_MODE_DISASSEMBLY);
 	}

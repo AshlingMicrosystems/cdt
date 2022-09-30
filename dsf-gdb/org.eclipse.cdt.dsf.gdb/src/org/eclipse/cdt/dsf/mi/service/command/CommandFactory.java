@@ -506,6 +506,10 @@ public class CommandFactory {
 		return new MIDataDisassemble(ctx, file, linenum, lines, mode);
 	}
 
+	public ICommand<MIDataDisassembleInfo> createMIDataDisassemble(IDisassemblyDMContext ctx, String addr, int mode) {
+		return new MIDataDisassemble(ctx, addr, mode);
+	}
+
 	public ICommand<MIDataEvaluateExpressionInfo> createMIDataEvaluateExpression(ICommandControlDMContext ctx,
 			String expr) {
 		return new MIDataEvaluateExpression<>(ctx, expr);
@@ -895,6 +899,7 @@ public class CommandFactory {
 	public ICommand<MIInfo> createMIGDBSetStartupWithShell(ICommandControlDMContext ctx, boolean enable) {
 		return new MIGDBSetStartupWithShell(ctx, enable);
 	}
+
 	public ICommand<MIInfo> createMIGDBSetTargetAsync(ICommandControlDMContext ctx, boolean isSet) {
 		return new MIGDBSetTargetAsync(ctx, isSet);
 	}
