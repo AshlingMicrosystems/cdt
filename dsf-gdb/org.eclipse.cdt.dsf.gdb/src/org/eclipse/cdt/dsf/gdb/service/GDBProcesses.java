@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008, 2014 Ericsson and others.
+ * Copyright (c) 2008, 2015 Ericsson and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -158,13 +158,12 @@ public class GDBProcesses extends MIProcesses implements IGDBProcesses {
 
 	/** @since 4.0 */
 	@Override
-	public IMIContainerDMContext createContainerContextFromGroupId(ICommandControlDMContext controlDmc,
-			String groupId) {
+	public IMIContainerDMContext createContainerContextFromGroupId(IDMContext dmc, String groupId) {
 		IProcessDMContext processDmc;
 		if (fProcId != null) {
-			processDmc = createProcessContext(controlDmc, fProcId);
+			processDmc = createProcessContext(dmc, fProcId);
 		} else {
-			processDmc = createProcessContext(controlDmc, MIProcesses.UNKNOWN_PROCESS_ID);
+			processDmc = createProcessContext(dmc, MIProcesses.UNKNOWN_PROCESS_ID);
 		}
 		return createContainerContext(processDmc, groupId);
 	}

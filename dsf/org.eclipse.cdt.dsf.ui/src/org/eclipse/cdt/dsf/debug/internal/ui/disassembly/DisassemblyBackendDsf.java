@@ -64,6 +64,7 @@ import org.eclipse.cdt.dsf.debug.service.IMixedInstruction;
 import org.eclipse.cdt.dsf.debug.service.IRegisters;
 import org.eclipse.cdt.dsf.debug.service.IRegisters.IRegisterDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExitedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
@@ -275,7 +276,16 @@ public class DisassemblyBackendDsf extends AbstractDisassemblyBackend implements
 				fTargetFrameContext = null;
 				result.contextChanged = true;
 			}
-		} else if (dmContext instanceof IExecutionDMContext) {
+		}
+		//<CUSTOMISATION - ASHLING> Change for not showing the previous Disassembly view for ContainerContext.
+		//Otherwise the view corresponding to previously selected stack or thread frame would be retained.
+		else if (dmContext instanceof IContainerDMContext) {
+			fTargetContext = null;
+			fTargetFrameContext = null;
+			result.contextChanged = true;
+		}
+		//<CUSTOMISATION>
+		else if (dmContext instanceof IExecutionDMContext) {
 			// When switching to and between thread and application nodes.
 			result.sessionId = fDsfSessionId;
 			result.contextChanged = false;

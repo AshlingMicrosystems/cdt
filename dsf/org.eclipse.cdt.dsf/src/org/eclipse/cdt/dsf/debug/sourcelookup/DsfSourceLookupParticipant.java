@@ -153,7 +153,7 @@ public class DsfSourceLookupParticipant extends AbstractSourceLookupParticipant 
 		}
 
 		final IDMContext dmc = (IDMContext) object;
-		Query<String> query = new Query<>() {
+		Query<String> query = new Query<String>() {
 			@Override
 			protected void execute(final DataRequestMonitor<String> rm) {
 				getSourceNameOnDispatchThread(dmc, rm);
