@@ -173,33 +173,42 @@ public class RegisterGroupsPersistance {
 		memento = fLaunchConfig.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_REGISTER_GROUPS,
 				DEFAULT_ATTR_DEBUGGER_REGISTER_GROUPS_VALUE);
 
-		if (memento != null && memento.length() > 0) {
-			Node node = DebugPlugin.parseDocument(memento);
+		/*
+				 * <Ashling customization>
+				 */
+		boolean loadRegisterGroupsFromConfig = fLaunchConfig
+				.getAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_LOAD_REGISTER_GROUP_PERSISTANCE, true);
+		if (loadRegisterGroupsFromConfig) {
+			if (memento != null && memento.length() > 0) {
+				Node node = DebugPlugin.parseDocument(memento);
 
-			if (node.getNodeType() != Node.ELEMENT_NODE) {
-				abort("Unable to restore register groups - invalid memento.", null); //$NON-NLS-1$
-			}
-			Element element = (Element) node;
-			if (!ELEMENT_REGISTER_GROUP_LIST.equals(element.getNodeName())) {
-				abort("Unable to restore register groups - expecting register group list element.", null); //$NON-NLS-1$
-			}
+				if (node.getNodeType() != Node.ELEMENT_NODE) {
+					abort("Unable to restore register groups - invalid memento.", null); //$NON-NLS-1$
+				}
+				Element element = (Element) node;
+				if (!ELEMENT_REGISTER_GROUP_LIST.equals(element.getNodeName())) {
+					abort("Unable to restore register groups - expecting register group list element.", null); //$NON-NLS-1$
+				}
 
-			Node childNode = element.getFirstChild();
-			while (childNode != null) {
-				if (childNode.getNodeType() == Node.ELEMENT_NODE) {
-					Element child = (Element) childNode;
-					if (ELEMENT_GROUP.equals(child.getNodeName())) {
-						String groupMemento = child.getAttribute(ATTR_REGISTER_GROUP_MEMENTO);
+				Node childNode = element.getFirstChild();
+				while (childNode != null) {
+					if (childNode.getNodeType() == Node.ELEMENT_NODE) {
+						Element child = (Element) childNode;
+						if (ELEMENT_GROUP.equals(child.getNodeName())) {
+							String groupMemento = child.getAttribute(ATTR_REGISTER_GROUP_MEMENTO);
 
-						IRegisterGroupDescriptor groupdesc = createGroupFromMemento(groupMemento);
-						if (groupdesc != null) {
-							if (containerId == null || containerId.equals(groupdesc.getContainerId())) {
-								groups.add(groupdesc);
+							IRegisterGroupDescriptor groupdesc = createGroupFromMemento(groupMemento);
+							if (groupdesc != null) {
+								if (containerId == null || containerId.equals(groupdesc.getContainerId())) {
+									groups.add(groupdesc);
+								}
+
 							}
 						}
 					}
+					childNode = childNode.getNextSibling();
 				}
-				childNode = childNode.getNextSibling();
+
 			}
 
 		}
