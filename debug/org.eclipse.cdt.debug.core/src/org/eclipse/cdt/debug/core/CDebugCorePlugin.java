@@ -404,16 +404,21 @@ public class CDebugCorePlugin extends Plugin {
 		ILaunchConfigurationType postMortemCfg = launchMgr
 				.getLaunchConfigurationType(ICDTLaunchConfigurationConstants.ID_LAUNCH_C_POST_MORTEM);
 		try {
-			if (postMortemCfg.getPreferredDelegate(debugSet) == null) {
-				ILaunchDelegate[] delegates = postMortemCfg.getDelegates(debugSet);
-				for (ILaunchDelegate delegate : delegates) {
-					if (ICDTLaunchConfigurationConstants.PREFERRED_DEBUG_POSTMORTEM_LAUNCH_DELEGATE
-							.equals(delegate.getId())) {
-						postMortemCfg.setPreferredDelegate(debugSet, delegate);
-						break;
+			//<CUSTOMISATION - ASHLING> - GitLab riscfree-ui-1130
+			//null checking added (core dump feature moved to separate plug-in. If plug-in is not present in product null exception occurs)
+			if (null != postMortemCfg) {
+				if (postMortemCfg.getPreferredDelegate(debugSet) == null) {
+					ILaunchDelegate[] delegates = postMortemCfg.getDelegates(debugSet);
+					for (ILaunchDelegate delegate : delegates) {
+						if (ICDTLaunchConfigurationConstants.PREFERRED_DEBUG_POSTMORTEM_LAUNCH_DELEGATE
+								.equals(delegate.getId())) {
+							postMortemCfg.setPreferredDelegate(debugSet, delegate);
+							break;
+						}
 					}
 				}
 			}
+			//<CUSTOMISATION - ASHLING>
 		} catch (CoreException e) {
 		}
 
