@@ -18,6 +18,7 @@
 
 package org.eclipse.cdt.dsf.gdb.internal.ui.viewmodel.launch;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -391,7 +392,12 @@ public class ContainerVMNode extends AbstractContainerVMNode implements IElement
 			Object showFullPathPreference = getVMProvider().getPresentationContext()
 					.getProperty(IDsfDebugUIConstants.DEBUG_VIEW_SHOW_FULL_PATH_PROPERTY);
 			if (showFullPathPreference instanceof Boolean && (Boolean) showFullPathPreference == false) {
-				fileName = new Path(fileName).lastSegment();
+				//<CUSTOMIZATION - ASHLING Return last segment only if the file exists. Helps to show tap name with / in Intel auto-detect>
+				File file = new File(fileName);
+				if (file.exists()) {
+					fileName = new Path(fileName).lastSegment();
+				}
+				//</CUSTOMIZATION>
 			}
 		}
 		update.setProperty(PROP_NAME, fileName);
