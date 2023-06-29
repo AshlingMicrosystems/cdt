@@ -14,6 +14,7 @@
  *******************************************************************************/
 package org.eclipse.cdt.ui.wizards;
 
+import java.io.File;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -50,7 +51,9 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.dialogs.WizardNewProjectCreationPage;
@@ -62,6 +65,7 @@ public class CDTMainWizardPage extends WizardNewProjectCreationPage implements I
 	private static final String ELEMENT_NAME = "wizard"; //$NON-NLS-1$
 	private static final String CLASS_NAME = "class"; //$NON-NLS-1$
 	public static final String DESC = "EntryDescriptor"; //$NON-NLS-1$
+	public static final String EFINIX_BUNDLE_NAME = "com.ashling.riscfree.debug.efinix.importwizard.ui"; //$NON-NLS-1$
 
 	// Widgets
 	private Tree tree;
@@ -71,6 +75,10 @@ public class CDTMainWizardPage extends WizardNewProjectCreationPage implements I
 
 	public CWizardHandler h_selected;
 	private Label categorySelectedLabel;
+
+	private Label bspLocationLabel;
+	private Text bspLocationPathField;
+	private Button bspBrowseButton;
 
 	/**
 	 * Creates a new project creation wizard page.
@@ -95,6 +103,11 @@ public class CDTMainWizardPage extends WizardNewProjectCreationPage implements I
 	}
 
 	private void createDynamicGroup(Composite parent) {
+
+		if (Platform.getBundle(EFINIX_BUNDLE_NAME) != null) {
+			bspLocationArea(parent);
+		}
+
 		Composite c = new Composite(parent, SWT.NONE);
 		c.setLayoutData(new GridData(GridData.FILL_BOTH));
 		c.setLayout(new GridLayout(2, true));
@@ -150,6 +163,47 @@ public class CDTMainWizardPage extends WizardNewProjectCreationPage implements I
 
 		// restore settings from preferences
 		showSup.setSelection(!CDTPrefUtil.getBool(CDTPrefUtil.KEY_NOSUPP));
+	}
+
+	private void bspLocationArea(Composite composite) {
+
+		Composite bspLocationComposite = new Composite(composite, SWT.NONE);
+		GridLayout layout = new GridLayout();
+		layout.numColumns = 4;
+		bspLocationComposite.setLayout(layout);
+		bspLocationComposite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+		// location label
+		bspLocationLabel = new Label(bspLocationComposite, SWT.NONE);
+		bspLocationLabel.setText(Messages.AshlingBspLocation_1);
+
+		// project location entry field
+		bspLocationPathField = new Text(bspLocationComposite, SWT.BORDER);
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
+		data.horizontalSpan = 2;
+		bspLocationPathField.setLayoutData(data);
+
+		// browse button
+		bspBrowseButton = new Button(bspLocationComposite, SWT.PUSH);
+		bspBrowseButton.setText(Messages.AshlingBspLocation_2);
+		bspBrowseButton.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent event) {
+				browseButtonSelected(Messages.AshlingBspLocation_1, bspLocationPathField);
+			}
+		});
+	}
+
+	private void browseButtonSelected(String title, Text text) {
+		DirectoryDialog dialog = new DirectoryDialog(getShell(), SWT.NONE);
+		dialog.setText(title);
+		String str = text.getText().trim();
+		int lastSeparatorIndex = str.lastIndexOf(File.separator);
+		if (lastSeparatorIndex != -1)
+			dialog.setFilterPath(str.substring(0, lastSeparatorIndex));
+		str = dialog.open();
+		if (str != null)
+			text.setText(str);
 	}
 
 	@Override
