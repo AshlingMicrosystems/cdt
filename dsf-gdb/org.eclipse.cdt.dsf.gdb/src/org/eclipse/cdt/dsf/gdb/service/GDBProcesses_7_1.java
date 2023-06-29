@@ -41,6 +41,7 @@ import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIListThreadGroupsInfo.IThreadGroupInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIThread;
+import org.eclipse.cdt.dsf.mi.service.command.output.MIThreadInfoInfo;
 import org.eclipse.cdt.dsf.service.DsfServiceEventHandler;
 import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IStatus;
@@ -133,6 +134,12 @@ public class GDBProcesses_7_1 extends GDBProcesses_7_0 {
 
 	@Override
 	public void getExecutionData(final IThreadDMContext dmc, final DataRequestMonitor<IThreadDMData> rm) {
+		//<CUSTOMISATION-ASHLING>This is a temporary hack to get rid of git-lab#141/ https://bugs.eclipse.org/bugs/show_bug.cgi?id=339005
+		if (getSession().getExecutor().isInExecutorThread()) {
+			super.getExecutionData(dmc, rm);
+			return;
+		}
+		//<CUSTOMISATION>
 		if (dmc instanceof IMIProcessDMContext) {
 			// Starting with GDB 7.1, we can obtain the list of cores a process is currently
 			// running on (each core that has a thread of that process).
@@ -177,25 +184,20 @@ public class GDBProcesses_7_1 extends GDBProcesses_7_0 {
 				}
 			});
 		} else if (dmc instanceof MIThreadDMC) {
-			ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
-			final String groupId = getGroupFromPid(
-					(DMContexts.getParentOfType(dmc, IMIProcessDMContext.class)).getProcId());
-			String threadId = ((MIThreadDMC) dmc).getId();
+			// Starting with GDB 7.1, we can obtain the core on which a thread
+			// is currently located.  The info is a new field in -thread-info
+			final MIThreadDMC threadDmc = (MIThreadDMC) dmc;
 
-			fCommandForCoresCache.execute(fCommandFactory.createMIListThreadGroups(controlDmc, groupId),
-					new ImmediateDataRequestMonitor<MIListThreadGroupsInfo>(rm) {
+			ICommandControlDMContext controlDmc = DMContexts.getAncestorOfType(dmc, ICommandControlDMContext.class);
+			fCommandForCoresCache.execute(fCommandFactory.createMIThreadInfo(controlDmc, threadDmc.getId()),
+					new ImmediateDataRequestMonitor<MIThreadInfoInfo>(rm) {
 						@Override
-						protected void handleCompleted() {
+						protected void handleSuccess() {
 							IThreadDMData threadData = null;
-							if (isSuccess()) {
-								MIThread[] threads = getData().getThreadInfo().getThreadList();
-								if (threads != null) {
-									for (MIThread thread : threads) {
-										if (thread.getThreadId().equals(threadId)) {
-											threadData = createThreadDMData(thread);
-											break;
-										}
-									}
+							if (getData().getThreadList().length != 0) {
+								MIThread thread = getData().getThreadList()[0];
+								if (thread.getThreadId().equals(threadDmc.getId())) {
+									threadData = createThreadDMData(thread);
 								}
 							}
 
@@ -203,7 +205,7 @@ public class GDBProcesses_7_1 extends GDBProcesses_7_0 {
 								rm.setData(threadData);
 							} else {
 								rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE,
-										"Could not get thread info", getStatus().getException())); //$NON-NLS-1$
+										"Could not get thread info", null)); //$NON-NLS-1$
 							}
 							rm.done();
 						}

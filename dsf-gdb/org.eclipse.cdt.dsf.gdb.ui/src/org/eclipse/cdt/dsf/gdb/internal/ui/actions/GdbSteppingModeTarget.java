@@ -46,7 +46,7 @@ public class GdbSteppingModeTarget extends DsfSteppingModeTarget {
 
 	@Override
 	public boolean supportsInstructionStepping() {
-		Query<Boolean> supportInstructionStepping = new Query<>() {
+		Query<Boolean> supportInstructionStepping = new Query<Boolean>() {
 			@Override
 			protected void execute(DataRequestMonitor<Boolean> rm) {
 				IGDBBackend backend = fTracker.getService(IGDBBackend.class);

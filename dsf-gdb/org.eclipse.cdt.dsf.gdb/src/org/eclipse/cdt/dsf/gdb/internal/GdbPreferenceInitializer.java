@@ -16,6 +16,7 @@
  *     Anton Gorenkov - A preference to use RTTI for variable types determination (Bug 377536)
  *     Marc Khouzam (Ericsson) - Add preference for aggressive breakpoint filtering (Bug 360735)
  *     Intel Corporation - Added Reverse Debugging BTrace support
+ *     Ashling
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal;
 
@@ -33,6 +34,7 @@ public class GdbPreferenceInitializer extends AbstractPreferenceInitializer {
 	@Override
 	public void initializeDefaultPreferences() {
 		IEclipsePreferences node = DefaultScope.INSTANCE.getNode(GdbPlugin.PLUGIN_ID);
+
 		node.putBoolean(IGdbDebugPreferenceConstants.PREF_TRACES_ENABLE, false);
 		node.putInt(IGdbDebugPreferenceConstants.PREF_MAX_GDB_TRACES, 500000);
 		node.putBoolean(IGdbDebugPreferenceConstants.PREF_MAX_MI_OUTPUT_LINES_ENABLE,
