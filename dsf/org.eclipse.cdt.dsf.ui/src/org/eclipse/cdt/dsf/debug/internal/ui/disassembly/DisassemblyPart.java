@@ -279,6 +279,7 @@ public abstract class DisassemblyPart extends WorkbenchPart
 	private volatile int fUpdateCount;
 	private BigInteger fPCAddress;
 	private BigInteger fGotoAddressPending = PC_UNKNOWN;
+	private Runnable gotoAddrPendingOperation = null;
 	private BigInteger fFocusAddress = PC_UNKNOWN;
 	private int fBufferZone;
 	private String fDebugSessionId;
@@ -547,6 +548,10 @@ public abstract class DisassemblyPart extends WorkbenchPart
 		fShowSymbols = prefs.getBoolean(DisassemblyPreferenceConstants.SHOW_SYMBOLS);
 		fUpdateBeforeFocus = !prefs.getBoolean(DisassemblyPreferenceConstants.AVOID_READ_BEFORE_PC);
 		fPCHistorySizeMax = prefs.getInt(DisassemblyPreferenceConstants.PC_HISTORY_SIZE);
+	}
+
+	public IAdaptable getDebugContext() {
+		return fDebugContext;
 	}
 
 	public void logWarning(String message, Throwable error) {
@@ -2550,7 +2555,6 @@ public abstract class DisassemblyPart extends WorkbenchPart
 		if (fExtPCAnnotationModel != null) {
 			fBackend.updateExtendedPCAnnotation(fExtPCAnnotationModel);
 		}
-
 		return pos;
 	}
 
@@ -2562,6 +2566,12 @@ public abstract class DisassemblyPart extends WorkbenchPart
 				fDoPendingPosted = false;
 			});
 		}
+	}
+
+	public void playBack(BigInteger address, Runnable operation) {
+		gotoAddrPendingOperation = operation;
+		fGotoAddressPending = PC_UNKNOWN;
+		gotoAddress(address);
 	}
 
 	/* (non-Javadoc)
@@ -2594,6 +2604,10 @@ public abstract class DisassemblyPart extends WorkbenchPart
 			if (fUpdateTitlePending) {
 				updateTitle();
 			}
+		}
+		if (fGotoAddressPending == PC_UNKNOWN && gotoAddrPendingOperation != null) {
+			gotoAddrPendingOperation.run();
+			gotoAddrPendingOperation = null;
 		}
 	}
 

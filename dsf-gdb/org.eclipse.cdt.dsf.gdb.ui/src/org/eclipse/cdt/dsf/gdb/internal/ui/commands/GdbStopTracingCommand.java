@@ -64,7 +64,7 @@ public class GdbStopTracingCommand extends AbstractDebugCommand implements IStop
 			return;
 		}
 
-		Query<Object> stopTracingQuery = new Query<>() {
+		Query<Object> stopTracingQuery = new Query<Object>() {
 			@Override
 			public void execute(final DataRequestMonitor<Object> rm) {
 				IGDBTraceControl traceControl = fTracker.getService(IGDBTraceControl.class);
@@ -99,7 +99,7 @@ public class GdbStopTracingCommand extends AbstractDebugCommand implements IStop
 			return false;
 		}
 
-		Query<Boolean> canStopTracingQuery = new Query<>() {
+		Query<Boolean> canStopTracingQuery = new Query<Boolean>() {
 			@Override
 			public void execute(DataRequestMonitor<Boolean> rm) {
 				IGDBTraceControl traceControl = fTracker.getService(IGDBTraceControl.class);
