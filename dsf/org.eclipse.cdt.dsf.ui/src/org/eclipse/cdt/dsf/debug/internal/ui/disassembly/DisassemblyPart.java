@@ -109,6 +109,7 @@ import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.resource.ResourceLocator;
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.BadPositionCategoryException;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IFindReplaceTarget;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextOperationTarget;
@@ -279,6 +280,7 @@ public abstract class DisassemblyPart extends WorkbenchPart
 	private volatile int fUpdateCount;
 	private BigInteger fPCAddress;
 	private BigInteger fGotoAddressPending = PC_UNKNOWN;
+	private Runnable gotoAddrPendingOperation = null;
 	private BigInteger fFocusAddress = PC_UNKNOWN;
 	private int fBufferZone;
 	private String fDebugSessionId;
@@ -549,6 +551,10 @@ public abstract class DisassemblyPart extends WorkbenchPart
 		fPCHistorySizeMax = prefs.getInt(DisassemblyPreferenceConstants.PC_HISTORY_SIZE);
 	}
 
+	public IAdaptable getDebugContext() {
+		return fDebugContext;
+	}
+
 	public void logWarning(String message, Throwable error) {
 		DsfUIPlugin.getDefault().getLog().log(new Status(IStatus.WARNING, DsfUIPlugin.PLUGIN_ID, message, error));
 	}
@@ -580,6 +586,8 @@ public abstract class DisassemblyPart extends WorkbenchPart
 			if (fColumnSupport == null)
 				fColumnSupport = createColumnSupport();
 			return (T) fColumnSupport;
+		} else if (IDocument.class.equals(required)) {
+			return (T) getDocument();
 		}
 
 		return super.getAdapter(required);
@@ -2126,8 +2134,10 @@ public abstract class DisassemblyPart extends WorkbenchPart
 		fPCHistory.clear();
 		fPendingPCUpdates.clear();
 		fFile2Storage.clear();
-		fDocument.clear();
+		var oldDocument = fDocument;
+		fDocument = createDocument();
 		fViewer.setDocument(fDocument, new AnnotationModel());
+		oldDocument.dispose();
 		if (fDebugSessionId != null) {
 			attachBreakpointsAnnotationModel();
 			attachExtendedPCAnnotationModel();
@@ -2550,7 +2560,6 @@ public abstract class DisassemblyPart extends WorkbenchPart
 		if (fExtPCAnnotationModel != null) {
 			fBackend.updateExtendedPCAnnotation(fExtPCAnnotationModel);
 		}
-
 		return pos;
 	}
 
@@ -2562,6 +2571,12 @@ public abstract class DisassemblyPart extends WorkbenchPart
 				fDoPendingPosted = false;
 			});
 		}
+	}
+
+	public void playBack(BigInteger address, Runnable operation) {
+		gotoAddrPendingOperation = operation;
+		fGotoAddressPending = PC_UNKNOWN;
+		gotoAddress(address);
 	}
 
 	/* (non-Javadoc)
@@ -2594,6 +2609,10 @@ public abstract class DisassemblyPart extends WorkbenchPart
 			if (fUpdateTitlePending) {
 				updateTitle();
 			}
+		}
+		if (fGotoAddressPending == PC_UNKNOWN && gotoAddrPendingOperation != null) {
+			gotoAddrPendingOperation.run();
+			gotoAddrPendingOperation = null;
 		}
 	}
 
