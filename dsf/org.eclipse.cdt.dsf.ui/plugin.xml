@@ -565,6 +565,15 @@
 			properties="isGroupDebugContextsVisible,isUngroupDebugContextsVisible"
 			type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
       </propertyTester>
+	   <!--<CUSTOMISATION - ASHLING> Rename Group peroperty tester-->
+       <propertyTester
+			class="org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout.RenameGroupPropertyTester"
+			id="org.eclipse.cdt.dsf.ui.debug.view.layout.RenameGroupPropertyTester"
+			namespace="org.eclipse.cdt.debug.ui"
+			properties="isRenameGroupDebugContextsVisible"
+			type="org.eclipse.cdt.dsf.ui.viewmodel.datamodel.IDMVMContext">
+      </propertyTester>
+	  <!--<CUSTOMISATION>-->
       <propertyTester
             class="org.eclipse.cdt.dsf.debug.internal.ui.disassembly.DisassemblyToggleBreakpointTester"
             id="org.eclipse.cdt.dsf.debug.ui.disassemblyViewToggleBreakpointTester"

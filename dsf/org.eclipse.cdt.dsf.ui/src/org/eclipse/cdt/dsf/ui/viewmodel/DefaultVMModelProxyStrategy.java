@@ -619,9 +619,10 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
 					-1, -1, new DataRequestMonitor<List<Object>>(getVMProvider().getExecutor(), rm) {
 						@Override
 						protected void handleCompleted() {
-							if (fDisposed)
+							if (fDisposed) {
+								rm.done();
 								return;
-
+							}
 							final List<Object> childElements = getData();
 
 							// Check for an empty list of elements.  If the list of elements is empty
@@ -705,34 +706,36 @@ public class DefaultVMModelProxyStrategy implements IVMModelProxy {
 
 						for (final IVMNode childNode : childNodes.keySet()) {
 
-							if (node.equals(childNode)) {
-
-								// Avoid descending into recursive node hierarchy's when calculating the delta.
-								// if recursive nodes are not allowed.
-								if (!allowRecursiveVMNodes())
-									continue;
-
-								// get into recursion to build the delta only if the recursive context is added.
-								//
-								// We user current assumption that recursive container can be added as first children
-								// if the list of VMNodes. If we decide to make the patch more generic ( allow recursive
-								// node to be at different index) we need to remove this simplification.
-								//
-								if (isDeltaElementOfType(delta, childNode)) {
-									childNode.buildDelta(event, delta, 0,
-											new RequestMonitor(getVMProvider().getExecutor(), multiRm) {
-												@Override
-												protected void handleSuccess() {
-													buildChildDeltas(childNode, event, delta, 0,
-															new RequestMonitor(getVMProvider().getExecutor(), multiRm));
-												}
-											});
-									multiRmCount++;
-								}
-
-								continue;
-							}
-
+							// TODO: is this needed? 
+							//	                    	if (node.equals(childNode)) {
+							//	                    		
+							//	                        	// Avoid descending into recursive node hierarchy's when calculating the delta.
+							//	                        	// if recursive nodes are not allowed. 
+							//	                    		if( !allowRecursiveVMNodes())
+							//	                    			continue;
+							//
+							//	                    		// get into recursion to build the delta only if the recursive context is added.
+							//	                    		// 
+							//	                    		// We user current assumption that recursive container can be added as first children 
+							//	                    		// if the list of VMNodes. If we decide to make the patch more generic ( allow recursive 
+							//	                    		// node to be at different index) we need to remove this simplification.
+							//	                    		//
+							//	                    		if (isDeltaElementOfType(delta, childNode)) {
+							//	                    			childNode.buildDelta(
+							//	                					event, delta, 0,   
+							//	                					new RequestMonitor(getVMProvider().getExecutor(), multiRm) {
+							//	                						@Override
+							//	                						protected void handleSuccess() {
+							//	                							buildChildDeltas( 
+							//	                								childNode, event, delta, 0,  
+							//	                								new RequestMonitor(getVMProvider().getExecutor(), multiRm));
+							//	                						}
+							//	                        		});
+							//	                        		multiRmCount++;
+							//	                    		}
+							//	                    		
+							//	                    		continue;
+							//	                    	}
 							final int nodeOffset = getData().get(childNode);
 							childNode.buildDelta(event, delta, nodeOffset,
 									new RequestMonitor(getVMProvider().getExecutor(), multiRm) {
