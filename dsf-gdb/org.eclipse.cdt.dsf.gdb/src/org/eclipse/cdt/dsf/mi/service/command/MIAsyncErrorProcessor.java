@@ -19,10 +19,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
+import org.eclipse.cdt.dsf.debug.service.IProcesses;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
+import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandResult;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandToken;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MICommand;
@@ -30,6 +34,7 @@ import org.eclipse.cdt.dsf.mi.service.command.events.MIErrorEvent;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIOutput;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIResultRecord;
+import org.eclipse.cdt.dsf.service.DsfServicesTracker;
 import org.eclipse.cdt.dsf.service.DsfSession;
 
 /**
@@ -55,12 +60,22 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 public class MIAsyncErrorProcessor implements IEventProcessor {
 
 	final private ICommandControlService fCommandControl;
+	final private DsfServicesTracker fServicesTracker;
 
 	private Map<IExecutionDMContext, Integer> fRunCommands = new HashMap<>();
 
 	public MIAsyncErrorProcessor(ICommandControlService commandControl) {
+		//<CUSTOMISATION-ASHLING>Suspend Operation Timeout git-lab#900
+		this(commandControl, null);
+		//<CUSTOMISATION>
+	}
+
+	public MIAsyncErrorProcessor(ICommandControlService commandControl, DsfServicesTracker servicesTracker) {
 		super();
 		fCommandControl = commandControl;
+		//<CUSTOMISATION-ASHLING>Suspend Operation Timeout git-lab#900
+		fServicesTracker = servicesTracker;
+		//<CUSTOMISATION>
 		fCommandControl.addCommandListener(this);
 		fCommandControl.addEventListener(this);
 	}
@@ -93,11 +108,31 @@ public class MIAsyncErrorProcessor implements IEventProcessor {
 		if (token.getCommand() instanceof MICommand<?> && result instanceof MIInfo && ((MIInfo) result).isRunning()) {
 			IDMContext ctx = ((MICommand<MIInfo>) token.getCommand()).getContext();
 			IExecutionDMContext execDMCtx = DMContexts.getAncestorOfType(ctx, IExecutionDMContext.class);
+			//<CUSTOMISATION-ASHLING>Suspend Operation Timeout git-lab#900
+			// Convert the ICommandControlDMContext to corresponding IContainerDMContext,
+			// so as to handle the upcoming error events properly
+			ICommandControlDMContext cmdCtrlDMCtx = DMContexts.getAncestorOfType(ctx, ICommandControlDMContext.class);
+			MIResultRecord rr = ((MIInfo) result).getMIOutput().getMIResultRecord();
+			if (rr == null) {
+				return;
+			}
 			if (execDMCtx != null) {
-				MIResultRecord rr = ((MIInfo) result).getMIOutput().getMIResultRecord();
-				if (rr != null) {
-					fRunCommands.put(execDMCtx, Integer.valueOf(rr.getToken()));
-				}
+				fRunCommands.put(execDMCtx, Integer.valueOf(rr.getToken()));
+			} else if (cmdCtrlDMCtx != null) {
+				IProcesses processesService = fServicesTracker.getService(IProcesses.class);
+				processesService.getProcessesBeingDebugged(cmdCtrlDMCtx,
+						new DataRequestMonitor<IDMContext[]>(fCommandControl.getExecutor(), null) {
+							@Override
+							protected void handleSuccess() {
+								for (IDMContext context : getData()) {
+									if (context instanceof IContainerDMContext) {
+										// consider only the process contexts here.
+										fRunCommands.put((IContainerDMContext) context, Integer.valueOf(rr.getToken()));
+									}
+								}
+							}
+						});
+				//<CUSTOMISATION>
 			}
 		}
 	}
