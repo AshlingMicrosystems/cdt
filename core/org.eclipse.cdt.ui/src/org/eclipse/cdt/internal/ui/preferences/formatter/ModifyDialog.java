@@ -42,8 +42,6 @@ import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.StatusDialog;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CTabFolder;
-import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Point;
@@ -56,6 +54,8 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 
 public abstract class ModifyDialog extends StatusDialog implements IModifyDialogTabPage.IModificationListener {
 
@@ -88,7 +88,7 @@ public abstract class ModifyDialog extends StatusDialog implements IModifyDialog
 	private final Map<String, String> fWorkingValues;
 	private final List<IModifyDialogTabPage> fTabPages;
 	private final IDialogSettings fDialogSettings;
-	private CTabFolder fTabFolder;
+	private TabFolder fTabFolder;
 	private final ProfileManager fProfileManager;
 	private Button fApplyButton;
 	private Button fSaveButton;
@@ -137,7 +137,7 @@ public abstract class ModifyDialog extends StatusDialog implements IModifyDialog
 
 		if (!fNewProfile) {
 			fTabFolder.setSelection(lastFocusNr);
-			((IModifyDialogTabPage) fTabFolder.getSelection().getData()).setInitialFocus();
+			((IModifyDialogTabPage) fTabFolder.getSelection()[0].getData()).setInitialFocus();
 		}
 	}
 
@@ -165,14 +165,11 @@ public abstract class ModifyDialog extends StatusDialog implements IModifyDialog
 
 		fSaveButton = createButton(nameComposite, SAVE_BUTTON_ID, FormatterMessages.ModifyDialog_Export_Button, false);
 
-		fTabFolder = new CTabFolder(composite, SWT.NONE);
+		fTabFolder = new TabFolder(composite, SWT.NONE);
 		fTabFolder.setFont(composite.getFont());
 		fTabFolder.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
 		addPages(fWorkingValues);
-		if (fTabFolder.getSelection() == null) {
-			fTabFolder.setSelection(0);
-		}
 
 		applyDialogFont(composite);
 
@@ -183,7 +180,7 @@ public abstract class ModifyDialog extends StatusDialog implements IModifyDialog
 
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				final CTabItem tabItem = (CTabItem) e.item;
+				final TabItem tabItem = (TabItem) e.item;
 				final IModifyDialogTabPage page = (IModifyDialogTabPage) tabItem.getData();
 				//				page.fSashForm.setWeights();
 				fDialogSettings.put(fKeyLastFocus, fTabPages.indexOf(page));
@@ -333,7 +330,7 @@ public abstract class ModifyDialog extends StatusDialog implements IModifyDialog
 	}
 
 	protected final void addTabPage(String title, IModifyDialogTabPage tabPage) {
-		final CTabItem tabItem = new CTabItem(fTabFolder, SWT.NONE);
+		final TabItem tabItem = new TabItem(fTabFolder, SWT.NONE);
 		applyDialogFont(tabItem.getControl());
 		tabItem.setText(title);
 		tabItem.setData(tabPage);
