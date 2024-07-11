@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2007, 2022 QNX Software Systems and others.
+ * Copyright (c) 2007, 2021 QNX Software Systems and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -23,7 +23,6 @@
  *     John Dallaway - Sort JTAG device list, bug 560186
  *     John Dallaway - Eliminate deprecated API, bug 566462
  *     John Dallaway - Eliminate pixel-level sizing, bug 567662
- *     John Dallaway - Support multiple remote debug protocols, bug 535143
 *******************************************************************************/
 
 package org.eclipse.cdt.debug.gdbjtag.ui;
@@ -50,12 +49,12 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.ui.AbstractLaunchConfigurationTab;
+import org.eclipse.debug.ui.ILaunchConfigurationDialog;
 import org.eclipse.debug.ui.StringVariableSelectionDialog;
+import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.layout.PixelConverter;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -66,6 +65,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
@@ -84,16 +84,17 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 
 	private Text gdbCommand;
 	private Button useRemote;
-	private Label jtagDeviceLabel;
 	private Combo jtagDevice;
-	private Label protocolLabel;
-	private ComboViewer protocol;
-	private Label connectionLabel;
+	private Composite remoteConnectionParameters;
+	private StackLayout remoteConnectParmsLayout;
+	private Composite remoteConnectionBox;
 	private Text connection;
 	private String savedJtagDevice;
 	protected Button fUpdateThreadlistOnSuspend;
 	private Button remoteTimeoutEnabled;
 	private Text remoteTimeoutValue;
+	//	<CUSTOMISATION - ASHLING> - GitLab#869
+	protected WorkingDirectoryBlock fWorkingDirectoryBlock = new WorkingDirectoryBlock();
 
 	@Override
 	public String getName() {
@@ -141,6 +142,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 		// Attach context help to this tab.
 		PlatformUI.getWorkbench().getHelpSystem().setHelp(getControl(),
 				ICDTLaunchHelpContextIds.LAUNCH_CONFIGURATION_DIALOG_DEBBUGER_TAB);
+		//		<CUSTOMISATION - ASHLING> - GitLab#869
+		fWorkingDirectoryBlock.createControl(comp);
 	}
 
 	private void browseButtonSelected(String title, Text text) {
@@ -208,15 +211,16 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 
 	private void createRemoteControl(Composite parent) {
 		Group group = new Group(parent, SWT.NONE);
-		GridLayout layout = new GridLayout();
+		GridLayout layout = new GridLayout(2, false);
 		group.setLayout(layout);
-		group.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+		gd.horizontalSpan = 2;
+		group.setLayoutData(gd);
 		group.setText(Messages.getString("GDBJtagDebuggerTab.remoteGroup_Text")); //$NON-NLS-1$
 
 		useRemote = new Button(group, SWT.CHECK);
-		useRemote.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		useRemote.setLayoutData(GridDataFactory.swtDefaults().span(2, 1).create());
 		useRemote.setText(Messages.getString("GDBJtagDebuggerTab.useRemote_Text")); //$NON-NLS-1$
-		useRemote.setToolTipText(Messages.getString("GDBJtagDebuggerTab.useRemoteTooltip")); //$NON-NLS-1$
 		useRemote.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -225,16 +229,7 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 			}
 		});
 
-		Composite comp = new Composite(group, SWT.NONE);
-		layout = new GridLayout();
-		layout.numColumns = 2;
-		layout.marginHeight = 0;
-		layout.marginLeft = new PixelConverter(group).convertHorizontalDLUsToPixels(8);
-		layout.marginRight = 0;
-		comp.setLayout(layout);
-		comp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-
-		remoteTimeoutEnabled = new Button(comp, SWT.CHECK);
+		remoteTimeoutEnabled = new Button(group, SWT.CHECK);
 		remoteTimeoutEnabled.setText(Messages.getString("GDBJtagDebuggerTab.remoteTimeout")); //$NON-NLS-1$
 		remoteTimeoutEnabled.setToolTipText(Messages.getString("GDBJtagDebuggerTab.remoteTimeoutTooltip")); //$NON-NLS-1$
 		remoteTimeoutEnabled.addSelectionListener(new SelectionAdapter() {
@@ -244,79 +239,98 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 				updateLaunchConfigurationDialog();
 			}
 		});
-		remoteTimeoutValue = new Text(comp, SWT.BORDER);
-		remoteTimeoutValue.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		remoteTimeoutValue = new Text(group, SWT.BORDER);
+		gd = new GridData();
+		gd.widthHint = new PixelConverter(remoteTimeoutValue).convertWidthInCharsToPixels(10);
+		remoteTimeoutValue.setLayoutData(gd);
 		remoteTimeoutValue.setToolTipText(Messages.getString("GDBJtagDebuggerTab.remoteTimeoutTooltip")); //$NON-NLS-1$
 
-		jtagDeviceLabel = new Label(comp, SWT.NONE);
-		jtagDeviceLabel.setText(Messages.getString("GDBJtagDebuggerTab.jtagDeviceLabel")); //$NON-NLS-1$
-		jtagDeviceLabel.setToolTipText(Messages.getString("GDBJtagDebuggerTab.jtagDeviceTooltip")); //$NON-NLS-1$
+		Composite comp = new Composite(group, SWT.NONE);
+		layout = new GridLayout();
+		layout.numColumns = 2;
+		comp.setLayout(layout);
+		comp.setLayoutData(GridDataFactory.swtDefaults().span(2, 1).grab(true, false).create());
+
+		Label label = new Label(comp, SWT.NONE);
+		label.setText(Messages.getString("GDBJtagDebuggerTab.jtagDeviceLabel")); //$NON-NLS-1$
 
 		jtagDevice = new Combo(comp, SWT.READ_ONLY | SWT.DROP_DOWN);
-		jtagDevice.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		jtagDevice.setToolTipText(Messages.getString("GDBJtagDebuggerTab.jtagDeviceTooltip")); //$NON-NLS-1$
 
 		GDBJtagDeviceContribution[] availableDevices = GDBJtagDeviceContributionFactory.getInstance()
 				.getGDBJtagDeviceContribution();
 		Arrays.stream(availableDevices).map(GDBJtagDeviceContribution::getDeviceName).sorted()
 				.forEach(name -> jtagDevice.add(name));
 
-		jtagDevice.addModifyListener(new ModifyListener() {
+		//		<CUSTOMISATION - ASHLING> - GitLab#869
+		jtagDevice.addSelectionListener(new SelectionAdapter() {
+
 			@Override
-			public void modifyText(ModifyEvent e) {
+			public void widgetSelected(SelectionEvent e) {
 				updateDeviceIpPort(jtagDevice.getText());
-				scheduleUpdateJob(); // provides much better performance for Text listeners
+				scheduleUpdateJob();
 			}
 		});
+		//		<CUSTOMISATION - ASHLING> - GitLab#869
 
-		protocolLabel = new Label(comp, SWT.NONE);
-		protocolLabel.setText(Messages.getString("GDBJtagDebuggerTab.protocolLabel")); //$NON-NLS-1$
-		protocolLabel.setToolTipText(Messages.getString("GDBJtagDebuggerTab.protocolTooltip")); //$NON-NLS-1$
-		protocol = new ComboViewer(comp, SWT.READ_ONLY | SWT.DROP_DOWN);
-		protocol.setContentProvider(new ArrayContentProvider());
-		protocol.getCombo().setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		protocol.getCombo().setToolTipText(Messages.getString("GDBJtagDebuggerTab.protocolTooltip")); //$NON-NLS-1$
+		remoteConnectionParameters = new Composite(group, SWT.NO_TRIM | SWT.NO_FOCUS);
+		remoteConnectParmsLayout = new StackLayout();
+		remoteConnectionParameters.setLayout(remoteConnectParmsLayout);
+		remoteConnectionParameters.setLayoutData(GridDataFactory.fillDefaults().span(2, 1).create());
 
-		connectionLabel = new Label(comp, SWT.NONE);
-		connectionLabel.setText(Messages.getString("GDBJtagDebuggerTab.connectionLabel")); //$NON-NLS-1$
-		connectionLabel.setToolTipText(Messages.getString("GDBJtagDebuggerTab.connectionTooltip")); //$NON-NLS-1$
-		connection = new Text(comp, SWT.BORDER);
-		connection.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		connection.setToolTipText(Messages.getString("GDBJtagDebuggerTab.connectionTooltip")); //$NON-NLS-1$
+		//
+		//  Create entry fields for other types of connections
+		//
+
+		{
+			remoteConnectionBox = new Composite(remoteConnectionParameters, SWT.NO_TRIM | SWT.NO_FOCUS);
+			layout = new GridLayout();
+			layout.numColumns = 2;
+			remoteConnectionBox.setLayout(layout);
+			remoteConnectionBox.setBackground(remoteConnectionParameters.getParent().getBackground());
+
+			label = new Label(remoteConnectionBox, SWT.NONE);
+			label.setText(Messages.getString("GDBJtagDebuggerTab.connectionLabel")); //$NON-NLS-1$
+			connection = new Text(remoteConnectionBox, SWT.BORDER);
+			gd = new GridData(GridData.FILL_HORIZONTAL | GridData.GRAB_HORIZONTAL);
+			connection.setLayoutData(gd);
+		}
 
 		//
 		//  Add watchers for user data entry
 		//
-		protocol.getCombo().addListener(SWT.Selection, e -> scheduleUpdateJob());
-		connection.addListener(SWT.Modify, e -> scheduleUpdateJob());
+		connection.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent e) {
+				scheduleUpdateJob(); // provides much better performance for Text listeners
+			}
+		});
 	}
 
 	/**
 	 * @param text
 	 */
 	protected void updateDeviceIpPort(String selectedDeviceName) {
-		if (!selectedDeviceName.equals(savedJtagDevice)) {
-			resetTargetParameters(selectedDeviceName);
-		}
-	}
 
-	private void resetTargetParameters(String deviceName) {
+		/*
+		* <CUSTOMISATION - ASHLING> - GitLab#869 Keep "JTAG Device: OpenOCD(via pipe) - | openocd --pipe" as the default value
+		*
+		* if (selectedDeviceName.equals(savedJtagDevice)) {
+		*			return;
+		*	}
+		*
+		* <CUSTOMISATION - ASHLING> - GitLab#869 Keep "JTAG Device: OpenOCD(via pipe) - | openocd --pipe" as the default value
+		*/
 		GDBJtagDeviceContribution[] availableDevices = GDBJtagDeviceContributionFactory.getInstance()
 				.getGDBJtagDeviceContribution();
 		IGDBJtagDevice selectedDevice = null;
 		for (int i = 0; i < availableDevices.length; i++) {
 			String name = availableDevices[i].getDeviceName();
-			if (name.equals(deviceName)) {
+			if (name.equals(selectedDeviceName)) {
 				selectedDevice = availableDevices[i].getDevice();
 				if (selectedDevice != null) {
 					if (selectedDevice instanceof IGDBJtagConnection) {
 						IGDBJtagConnection connectionDevice = (IGDBJtagConnection) selectedDevice;
 						connection.setText(connectionDevice.getDefaultDeviceConnection());
-						String[] protocols = connectionDevice.getDeviceProtocols();
-						protocol.setInput(protocols);
-						if (0 != protocols.length) {
-							protocol.setSelection(new StructuredSelection(protocols[0]));
-						}
 					}
 					useRemoteChanged();
 					updateLaunchConfigurationDialog();
@@ -333,13 +347,24 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 	private void useRemoteChanged() {
 		boolean enabled = useRemote.getSelection();
 		remoteTimeoutEnabled.setEnabled(enabled);
-		remoteTimeoutValue.setEnabled(enabled && remoteTimeoutEnabled.getSelection());
-		jtagDeviceLabel.setEnabled(enabled);
+		remoteTimeoutValue.setEnabled(remoteTimeoutEnabled.getSelection());
 		jtagDevice.setEnabled(enabled);
-		protocolLabel.setEnabled(enabled);
-		protocol.getCombo().setEnabled(enabled);
-		connectionLabel.setEnabled(enabled);
 		connection.setEnabled(enabled);
+		GDBJtagDeviceContribution selectedDeviceEntry = GDBJtagDeviceContributionFactory.getInstance()
+				.findByDeviceName(jtagDevice.getText());
+		if ((selectedDeviceEntry == null) || (selectedDeviceEntry.getDevice() == null)) {
+			remoteConnectParmsLayout.topControl = null;
+			remoteConnectionParameters.layout();
+		} else {
+			IGDBJtagDevice device = selectedDeviceEntry.getDevice();
+			if (device instanceof IGDBJtagConnection) {
+				remoteConnectParmsLayout.topControl = remoteConnectionBox;
+				remoteConnectionBox.getParent().layout();
+			} else {
+				remoteConnectParmsLayout.topControl = null;
+				remoteConnectionParameters.layout();
+			}
+		}
 	}
 
 	/**
@@ -421,35 +446,40 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 					}
 				}
 				jtagDevice.select(index);
+				//	<CUSTOMISATION - ASHLING> - GitLab#869
+				jtagDevice.notifyListeners(SWT.Selection, new Event());
 			} else {
 				String storedAddress = ""; //$NON-NLS-1$
 				int storedPort = -1;
 				String storedConnection = null;
-				String storedProtocol = null;
 
 				for (int i = 0; i < jtagDevice.getItemCount(); i++) {
 					if (jtagDevice.getItem(i).equals(savedJtagDevice)) {
 						storedAddress = configuration.getAttribute(IGDBJtagConstants.ATTR_IP_ADDRESS, ""); //$NON-NLS-1$
 						storedPort = configuration.getAttribute(IGDBJtagConstants.ATTR_PORT_NUMBER, -1);
 						storedConnection = configuration.getAttribute(IGDBJtagConstants.ATTR_CONNECTION, (String) null);
-						storedProtocol = configuration.getAttribute(IGDBJtagConstants.ATTR_PROTOCOL, (String) null);
 						jtagDevice.select(i);
-						resetTargetParameters(savedJtagDevice);
+						//<CUSTOMISATION - ASHLING> - GitLab#869
+						jtagDevice.notifyListeners(SWT.Selection, new Event());
 						break;
 					}
 				}
-				if (null != storedProtocol) {
-					protocol.setSelection(new StructuredSelection(storedProtocol));
+				//<CUSTOMISATION - ASHLING> - GitLab#869
+				String connectionText = connection.getText();
+				if (connectionText.isEmpty()) {
+					connectionText = IGDBJtagConstants.DEFAULT_CONNECTION;
 				}
+				//<CUSTOMISATION - ASHLING> - GitLab#869
 				if (null != storedConnection) { // if a connection URI
 					try {
-						connection.setText(new URI(storedConnection).getSchemeSpecificPart());
+						connectionText = new URI(storedConnection).getSchemeSpecificPart();
 					} catch (URISyntaxException e) {
 						Activator.log(e);
 					}
 				} else if (storedPort != -1) { // if a legacy address:port
-					connection.setText(String.format("%s:%d", storedAddress, storedPort)); //$NON-NLS-1$
+					connectionText = String.format("%s:%d", storedAddress, storedPort); //$NON-NLS-1$
 				}
+				connection.setText(connectionText);
 			}
 			boolean updateThreadsOnSuspend = configuration.getAttribute(
 					IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_UPDATE_THREADLIST_ON_SUSPEND,
@@ -464,6 +494,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 
 			remoteTimeoutChanged();
 			useRemoteChanged();
+			//<CUSTOMISATION - ASHLING> - GitLab#869
+			fWorkingDirectoryBlock.initializeFrom(configuration);
 		} catch (CoreException e) {
 			Activator.getDefault().getLog().log(e.getStatus());
 		}
@@ -499,12 +531,10 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 				if (device instanceof IGDBJtagConnection) {
 					String conn = connection.getText().trim();
 					URI uri = new URI("gdb", conn, ""); //$NON-NLS-1$ //$NON-NLS-2$
-					configuration.setAttribute(IGDBJtagConstants.ATTR_PROTOCOL, protocol.getCombo().getText());
 					configuration.setAttribute(IGDBJtagConstants.ATTR_CONNECTION, uri.toString());
 					configuration.removeAttribute(IGDBJtagConstants.ATTR_IP_ADDRESS);
 					configuration.removeAttribute(IGDBJtagConstants.ATTR_PORT_NUMBER);
 				} else {
-					configuration.removeAttribute(IGDBJtagConstants.ATTR_PROTOCOL);
 					configuration.removeAttribute(IGDBJtagConstants.ATTR_CONNECTION);
 				}
 			} catch (URISyntaxException e) {
@@ -519,6 +549,8 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 				remoteTimeoutEnabled.getSelection());
 		configuration.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_REMOTE_TIMEOUT_VALUE,
 				remoteTimeoutValue.getText().trim());
+		//<CUSTOMISATION - ASHLING> - GitLab#869
+		fWorkingDirectoryBlock.performApply(configuration);
 	}
 
 	@Override
@@ -526,14 +558,25 @@ public class GDBJtagDSFDebuggerTab extends AbstractLaunchConfigurationTab {
 		String defaultGdbCommand = Platform.getPreferencesService().getString(GdbPlugin.PLUGIN_ID,
 				IGdbDebugPreferenceConstants.PREF_DEFAULT_GDB_COMMAND, "", null); //$NON-NLS-1$
 		configuration.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUG_NAME, defaultGdbCommand);
-
 		configuration.setAttribute(IGDBJtagConstants.ATTR_USE_REMOTE_TARGET,
 				IGDBJtagConstants.DEFAULT_USE_REMOTE_TARGET);
-		configuration.setAttribute(IGDBJtagConstants.ATTR_JTAG_DEVICE_ID, DEFAULT_JTAG_DEVICE_ID);
+		//<CUSTOMISATION - ASHLING> - GitLab#869
+		String defaultJTagDeviceID = Platform.getPreferencesService().getString(Activator.PLUGIN_ID,
+				IGDBJtagConstants.ATTR_JTAG_DEVICE_ID, "", null); //$NON-NLS-1$
+		configuration.setAttribute(IGDBJtagConstants.ATTR_JTAG_DEVICE_ID, defaultJTagDeviceID);
+		//<CUSTOMISATION - ASHLING> - GitLab#869
 		configuration.setAttribute(ICDTLaunchConfigurationConstants.ATTR_DEBUGGER_START_MODE,
 				IGDBLaunchConfigurationConstants.DEBUGGER_MODE_REMOTE);
 		configuration.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_UPDATE_THREADLIST_ON_SUSPEND,
 				IGDBLaunchConfigurationConstants.DEBUGGER_UPDATE_THREADLIST_ON_SUSPEND_DEFAULT);
 	}
+
+	//<CUSTOMISATION - ASHLING> - GitLab#869
+	@Override
+	public void setLaunchConfigurationDialog(ILaunchConfigurationDialog dialog) {
+		super.setLaunchConfigurationDialog(dialog);
+		fWorkingDirectoryBlock.setLaunchConfigurationDialog(dialog);
+	}
+	//<CUSTOMISATION - ASHLING> - GitLab#869
 
 }
