@@ -26,7 +26,9 @@ import java.util.Map;
 import org.eclipse.cdt.debug.core.model.ICBreakpoint;
 import org.eclipse.cdt.debug.core.model.IConnectHandler;
 import org.eclipse.cdt.debug.core.model.IDebugNewExecutableHandler;
+import org.eclipse.cdt.debug.core.model.IGroupDebugContextsHandler;
 import org.eclipse.cdt.debug.core.model.IMemoryBlockAddressInfoRetrieval;
+import org.eclipse.cdt.debug.core.model.IRenameDebugContextHandler;
 import org.eclipse.cdt.debug.core.model.IResumeWithoutSignalHandler;
 import org.eclipse.cdt.debug.core.model.IReverseResumeHandler;
 import org.eclipse.cdt.debug.core.model.IReverseStepIntoHandler;
@@ -38,8 +40,12 @@ import org.eclipse.cdt.debug.core.model.IStepIntoSelectionHandler;
 import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.core.model.IStopTracingHandler;
 import org.eclipse.cdt.debug.core.model.IUncallHandler;
+import org.eclipse.cdt.debug.core.model.IUngroupDebugContextsHandler;
 import org.eclipse.cdt.debug.ui.IPinProvider;
 import org.eclipse.cdt.dsf.concurrent.Immutable;
+import org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout.actions.DsfGroupDebugContextsCommand;
+import org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout.actions.DsfUngroupDebugContextsCommand;
+import org.eclipse.cdt.dsf.debug.internal.ui.debugview.layout.actions.DsfRenameGroupContextCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfResumeCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepIntoCommand;
 import org.eclipse.cdt.dsf.debug.ui.actions.DsfStepIntoSelectionCommand;
@@ -195,7 +201,10 @@ public class GdbSessionAdapters {
 				IDisconnectHandler.class, IModelSelectionPolicyFactory.class, IRefreshAllTarget.class,
 				IReverseToggleHandler.class, IStartTracingHandler.class, IStopTracingHandler.class,
 				ISaveTraceDataHandler.class, ISelectNextTraceRecordHandler.class, ISelectPrevTraceRecordHandler.class,
-				IPinProvider.class, IDebugModelProvider.class, ILaunch.class, ICEditorTextHover.class,
+				IPinProvider.class, IGroupDebugContextsHandler.class, IUngroupDebugContextsHandler.class,
+				//<CUSTOMISATION - ASHLING> Handler for group renmae command
+				IRenameDebugContextHandler.class, IDebugModelProvider.class, ILaunch.class, ICEditorTextHover.class,
+				//<CUSTOMISATION>
 				IMemoryBlockAddressInfoRetrieval.class));
 	}
 
@@ -313,6 +322,17 @@ public class GdbSessionAdapters {
 		if (IPinProvider.class.equals(adapterType)) {
 			return (T) new GdbPinProvider(session);
 		}
+		if (IGroupDebugContextsHandler.class.equals(adapterType)) {
+			return (T) new DsfGroupDebugContextsCommand(session);
+		}
+		if (IUngroupDebugContextsHandler.class.equals(adapterType)) {
+			return (T) new DsfUngroupDebugContextsCommand(session);
+		}
+		//<CUSTOMISATION - ASHLING> Handler for group renmae command
+		if (IRenameDebugContextHandler.class.equals(adapterType)) {
+			return (T) new DsfRenameGroupContextCommand(session);
+		}
+		//<CUSTOMISATION>
 		if (IDebugModelProvider.class.equals(adapterType)) {
 			return (T) new IDebugModelProvider() {
 				// @see org.eclipse.debug.core.model.IDebugModelProvider#getModelIdentifiers()

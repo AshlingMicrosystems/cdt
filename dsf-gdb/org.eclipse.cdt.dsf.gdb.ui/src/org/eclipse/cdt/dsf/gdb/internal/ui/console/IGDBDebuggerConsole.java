@@ -27,6 +27,11 @@ import org.eclipse.debug.ui.DebugUITools;
 public interface IGDBDebuggerConsole extends IDebuggerConsole {
 	@Override
 	public default void consoleSelected() {
+		//<CUSTOMISATION>-ASHLING
+		if (!(getLaunch() instanceof GdbLaunch)) {
+			return;
+		}
+		//</CUSTOMISATION>-ASHLING
 		DsfSession session = ((GdbLaunch) getLaunch()).getSession();
 		if (!session.isActive()) {
 			return;

@@ -118,7 +118,7 @@ public class GdbReverseToggleCommand extends AbstractDebugCommand implements ICh
 			return;
 		}
 
-		Query<Object> setReverseMode = new Query<>() {
+		Query<Object> setReverseMode = new Query<Object>() {
 			@Override
 			public void execute(final DataRequestMonitor<Object> rm) {
 				final IReverseRunControl2 runControl = fTracker.getService(IReverseRunControl2.class);
@@ -209,7 +209,7 @@ public class GdbReverseToggleCommand extends AbstractDebugCommand implements ICh
 			return false;
 		}
 
-		Query<Boolean> canSetReverseMode = new Query<>() {
+		Query<Boolean> canSetReverseMode = new Query<Boolean>() {
 			@Override
 			public void execute(DataRequestMonitor<Boolean> rm) {
 				IReverseRunControl runControl = fTracker.getService(IReverseRunControl.class);
@@ -273,7 +273,7 @@ public class GdbReverseToggleCommand extends AbstractDebugCommand implements ICh
 			return false;
 		}
 
-		Query<Boolean> isToggledQuery = new Query<>() {
+		Query<Boolean> isToggledQuery = new Query<Boolean>() {
 			@Override
 			public void execute(final DataRequestMonitor<Boolean> rm) {
 				final IReverseRunControl runControl = fTracker.getService(IReverseRunControl.class);
@@ -349,7 +349,7 @@ public class GdbReverseToggleCommand extends AbstractDebugCommand implements ICh
 			return ReverseDebugMethod.OFF;
 		}
 
-		Query<ReverseDebugMethod> reverseMethodQuery = new Query<>() {
+		Query<ReverseDebugMethod> reverseMethodQuery = new Query<ReverseDebugMethod>() {
 			@Override
 			public void execute(DataRequestMonitor<ReverseDebugMethod> rm) {
 				IReverseRunControl2 runControl = fTracker.getService(IReverseRunControl2.class);

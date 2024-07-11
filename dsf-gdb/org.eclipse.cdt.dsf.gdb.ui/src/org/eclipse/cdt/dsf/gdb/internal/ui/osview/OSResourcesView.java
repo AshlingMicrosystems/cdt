@@ -297,7 +297,7 @@ public class OSResourcesView extends ViewPart implements DsfSession.SessionEnded
 			GdbLaunch l = (GdbLaunch) obj;
 			final DsfServicesTracker tracker = new DsfServicesTracker(GdbPlugin.getBundleContext(),
 					l.getSession().getId());
-			Query<IDMContext> contextQuery = new Query<>() {
+			Query<IDMContext> contextQuery = new Query<IDMContext>() {
 				@Override
 				protected void execute(DataRequestMonitor<IDMContext> rm) {
 					ICommandControlService commandControl = tracker.getService(ICommandControlService.class);
