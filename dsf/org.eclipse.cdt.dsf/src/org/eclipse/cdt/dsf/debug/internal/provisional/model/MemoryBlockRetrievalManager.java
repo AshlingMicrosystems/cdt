@@ -14,7 +14,9 @@
 package org.eclipse.cdt.dsf.debug.internal.provisional.model;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.datamodel.IDMContext;
@@ -28,7 +30,9 @@ import org.eclipse.cdt.dsf.service.DsfSession;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.IJobChangeEvent;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.core.runtime.jobs.JobChangeAdapter;
 import org.eclipse.debug.core.DebugEvent;
 import org.eclipse.debug.core.DebugException;
 import org.eclipse.debug.core.DebugPlugin;
@@ -46,6 +50,9 @@ public class MemoryBlockRetrievalManager implements IMemoryBlockRetrievalManager
 	private final DsfSession fSession;
 	private final ILaunchConfiguration fLaunchConfig;
 	private final Map<IMemoryDMContext, IMemoryBlockRetrieval> fMapMemDMCToBlockRetrieval = new HashMap<>();
+	//<CUSTOMISATION - ASHLING> do the memory block retrieval jobs sequentially git-lab#riscfree-ui#773
+	private Queue<Job> removeJobsQueue = new LinkedList<>();
+	//<CUSTOMISATION>
 
 	/**
 	 * Constructor
@@ -100,7 +107,6 @@ public class MemoryBlockRetrievalManager implements IMemoryBlockRetrievalManager
 						.fireDebugEventSet(new DebugEvent[] { new DebugEvent(retrieval, DebugEvent.TERMINATE) });
 
 				Job removeJob = new Job("Removing memory blocks") { //$NON-NLS-1$
-
 					@Override
 					protected IStatus run(IProgressMonitor monitor) {
 						IMemoryBlockManager mbm = DebugPlugin.getDefault().getMemoryBlockManager();
@@ -109,10 +115,39 @@ public class MemoryBlockRetrievalManager implements IMemoryBlockRetrievalManager
 						return Status.OK_STATUS;
 					}
 				};
-				removeJob.schedule();
+				//<CUSTOMISATION - ASHLING> do the memory block retrieval jobs sequentially git-lab#riscfree-ui#773
+				removeJob.addJobChangeListener(new JobChangeAdapter() {
+					@Override
+					public void done(IJobChangeEvent event) {
+						synchronized (removeJobsQueue) {
+							if (removeJobsQueue.contains(removeJob)) {
+								removeJobsQueue.remove(removeJob);
+								// schedule the next remove job
+								if (!removeJobsQueue.isEmpty()) {
+									removeJobsQueue.peek().schedule();
+								}
+
+							}
+						}
+					}
+				});
+				addRmvJobToQueueAndSchedule(removeJob);
+				//<CUSTOMISATION>
 			}
 		}
 	}
+
+	//<CUSTOMISATION - ASHLING> do the memory block retrieval jobs sequentially git-lab#riscfree-ui#773
+	private void addRmvJobToQueueAndSchedule(Job removeJob) {
+		synchronized (removeJobsQueue) {
+			if (removeJobsQueue.isEmpty()) {
+				// if no jobs are running we can schedule this job.
+				removeJob.schedule();
+			}
+			removeJobsQueue.add(removeJob);
+		}
+	}
+	//<CUSTOMISATION>
 
 	/* (non-Javadoc)
 	 * @see org.eclipse.cdt.dsf.debug.internal.provisional.model.IMemoryBlockRetrievalManager#getMemoryBlockRetrieval(org.eclipse.cdt.dsf.datamodel.IDMContext)

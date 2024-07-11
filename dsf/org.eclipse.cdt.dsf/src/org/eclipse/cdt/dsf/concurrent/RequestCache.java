@@ -44,7 +44,7 @@ public abstract class RequestCache<V> extends AbstractCache<V> {
 			fRm.cancel();
 		}
 
-		fRm = new DataRequestMonitor<>(getImmediateInDsfExecutor(), null) {
+		fRm = new DataRequestMonitor<V>(getImmediateInDsfExecutor(), null) {
 
 			@Override
 			protected void handleCompleted() {
