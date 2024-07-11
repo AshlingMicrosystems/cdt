@@ -91,6 +91,12 @@ public class MIErrorEvent extends MIStoppedEvent {
 			MIOOBRecord[] oobs) {
 		return MIErrorEvent.parse((IExecutionDMContext) containerDmc, token, results, oobs);
 	}
+	
+	//<CUSTOMISATION-ASHLING>Clone and create the event for childCtx git-lab#900
+	public MIErrorEvent createEventForChildCtx(IExecutionDMContext childCtx) {
+		return new MIErrorEvent(childCtx, getToken(), getResults(), this.oobs, this.msg, this.log);
+	}
+	//</CUSTOMISATION>
 
 	@Override
 	public String toString() {

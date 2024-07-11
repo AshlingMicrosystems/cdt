@@ -27,6 +27,7 @@
 package org.eclipse.cdt.dsf.gdb.service;
 
 import org.eclipse.cdt.debug.core.CDebugCorePlugin;
+import org.eclipse.cdt.dsf.debug.internal.provisional.service.IExecutionContextTranslator;
 import org.eclipse.cdt.dsf.debug.service.AbstractDsfDebugServicesFactory;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;
@@ -178,7 +179,11 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 			return (V) createBreakpointsSynchronizerService(session);
 		} else if (IGDBFocusSynchronizer.class.isAssignableFrom(clazz)) {
 			return (V) createFocusSynchronizerService(session);
+			//<CUSTOMISATION - ASHLING> - gitlab#951
+		} else if (ICommandCacheDelegateOnProcessCtx.class.isAssignableFrom(clazz)) {
+			return (V) new CommandCacheDelegateOnProcessCtx(session);
 		}
+		//<CUSTOMISATION - ASHLING>
 
 		return super.createService(clazz, session, optionalArguments);
 	}
@@ -351,6 +356,11 @@ public class GdbDebugServicesFactory extends AbstractDsfDebugServicesFactory {
 	@Override
 	protected IStack createStackService(DsfSession session) {
 		return new MIStack(session);
+	}
+
+	@Override
+	protected IExecutionContextTranslator createExecutionContextTranslator(DsfSession session) {
+		return new GDBGrouping(session);
 	}
 
 	/** @since 3.0 */

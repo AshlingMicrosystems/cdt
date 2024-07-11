@@ -20,6 +20,7 @@ package org.eclipse.cdt.dsf.gdb.launching;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceLookupDirector;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Sequence;
+import org.eclipse.cdt.dsf.debug.internal.provisional.service.IExecutionContextTranslator;
 import org.eclipse.cdt.dsf.debug.service.IBreakpoints;
 import org.eclipse.cdt.dsf.debug.service.IDisassembly;
 import org.eclipse.cdt.dsf.debug.service.IExpressions;
@@ -33,6 +34,7 @@ import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.cdt.dsf.debug.service.IStack;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.gdb.internal.service.IGDBFocusSynchronizer;
+import org.eclipse.cdt.dsf.gdb.service.ICommandCacheDelegateOnProcessCtx;
 import org.eclipse.cdt.dsf.gdb.service.IGDBHardwareAndOS;
 import org.eclipse.cdt.dsf.gdb.service.IGDBTraceControl;
 import org.eclipse.cdt.dsf.mi.service.CSourceLookup;
@@ -119,6 +121,15 @@ public class ServicesLaunchSequence extends Sequence {
 			// Create the low-level breakpoint service
 			fLaunch.getServiceFactory().createService(IBreakpoints.class, fSession).initialize(requestMonitor);
 		}
+		//<CUSTOMISATION - ASHLING> - gitlab#951
+	}, new Step() {
+		@Override
+		public void execute(final RequestMonitor requestMonitor) {
+			// Create the low-level breakpoint service
+			fLaunch.getServiceFactory().createService(ICommandCacheDelegateOnProcessCtx.class, fSession)
+					.initialize(requestMonitor);
+		}
+		//<CUSTOMISATION>
 	}, new Step() {
 		@Override
 		public void execute(final RequestMonitor requestMonitor) {
@@ -135,6 +146,17 @@ public class ServicesLaunchSequence extends Sequence {
 		@Override
 		public void execute(RequestMonitor requestMonitor) {
 			fLaunch.getServiceFactory().createService(IDisassembly.class, fSession).initialize(requestMonitor);
+		}
+	}, new Step() {
+		@Override
+		public void execute(RequestMonitor requestMonitor) {
+			IExecutionContextTranslator transator = fLaunch.getServiceFactory()
+					.createService(IExecutionContextTranslator.class, fSession);
+			if (transator != null) {
+				transator.initialize(requestMonitor);
+			} else {
+				requestMonitor.done();
+			}
 		}
 	}, new Step() {
 		@Override

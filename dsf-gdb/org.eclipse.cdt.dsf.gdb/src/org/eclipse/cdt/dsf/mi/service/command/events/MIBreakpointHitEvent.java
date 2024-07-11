@@ -55,6 +55,14 @@ public class MIBreakpointHitEvent extends MIStoppedEvent {
 		this.bkptno = bkptno;
 	}
 
+	// <Ashling customization>
+	protected MIBreakpointHitEvent(IExecutionDMContext ctx, int token, MIResult[] results, MIFrame frame, String bkptno,
+			String threadno) {
+		super(ctx, token, results, frame, threadno);
+		this.bkptno = bkptno;
+	}
+	// <Ashling customization>
+
 	/** @since 5.0 */
 	public String getNumber() {
 		return bkptno;
@@ -78,6 +86,7 @@ public class MIBreakpointHitEvent extends MIStoppedEvent {
 				} catch (NumberFormatException e) {
 				}
 			}
+
 		}
 
 		// We might be here because of a catchpoint hit; in gdb >= 7.0,
@@ -110,6 +119,9 @@ public class MIBreakpointHitEvent extends MIStoppedEvent {
 		}
 
 		MIStoppedEvent stoppedEvent = MIStoppedEvent.parse(dmc, token, results);
-		return new MIBreakpointHitEvent(stoppedEvent.getDMContext(), token, results, stoppedEvent.getFrame(), bkptno);
+		// <Ashling customization>
+		return new MIBreakpointHitEvent(stoppedEvent.getDMContext(), token, results, stoppedEvent.getFrame(), bkptno,
+				stoppedEvent.getThreadNumber().orElse(null));
+		// <Ashling customization>
 	}
 }

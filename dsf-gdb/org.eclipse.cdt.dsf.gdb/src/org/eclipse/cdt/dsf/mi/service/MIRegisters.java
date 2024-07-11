@@ -45,6 +45,7 @@ import org.eclipse.cdt.dsf.debug.service.command.BufferedCommandControl;
 import org.eclipse.cdt.dsf.debug.service.command.CommandCache;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
+import org.eclipse.cdt.dsf.gdb.service.IGDBGrouping.IGroupDMContext;
 import org.eclipse.cdt.dsf.mi.service.command.CommandFactory;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIDataListRegisterNamesInfo;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIDataListRegisterValuesInfo;
@@ -642,6 +643,15 @@ public class MIRegisters extends AbstractDsfService implements IRegisters, ICach
 	 */
 	@Override
 	public void getRegisterGroups(IDMContext ctx, DataRequestMonitor<IRegisterGroupDMContext[]> rm) {
+
+		if (DMContexts.getAncestorOfType(ctx, IGroupDMContext.class) != null) {
+			IStatus status = new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE,
+					"No register groups are present for group context", null); //$NON-NLS-1$
+			rm.setStatus(status);
+			rm.done();
+			return;
+		}
+
 		IContainerDMContext contDmc = DMContexts.getAncestorOfType(ctx, IContainerDMContext.class);
 		if (contDmc == null) {
 			rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, INVALID_HANDLE, "Container context not found", //$NON-NLS-1$

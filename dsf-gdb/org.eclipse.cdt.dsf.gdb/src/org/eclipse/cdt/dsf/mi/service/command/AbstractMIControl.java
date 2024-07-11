@@ -1276,10 +1276,7 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 		rm.done();
 	}
 
-	/**
-	 * @since 6.6
-	 */
-	protected String getGdbVersion() {
+	private String getGdbVersion() {
 		ILaunch launch = (ILaunch) getSession().getModelAdapter(ILaunch.class);
 		if (launch instanceof GdbLaunch) {
 			IDsfDebugServicesFactory servicesFactory = ((GdbLaunch) launch).getServiceFactory();
@@ -1290,10 +1287,7 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 		return null;
 	}
 
-	/**
-	 * @since 6.6
-	 */
-	protected boolean isConcurrentCommandsSupported() {
+	private boolean isConcurrentCommandsSupported() {
 		if (Platform.getOS().equals(Platform.OS_LINUX)) {
 			// Check if GDB client version is in range [8.3.50, 12.1)
 			// See https://sourceware.org/bugzilla/show_bug.cgi?id=28711 for details

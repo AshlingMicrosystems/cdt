@@ -20,6 +20,7 @@
  *     Marc Khouzam (Ericsson) - Support for dynamic printf (Bug 400628)
  *     Alvaro Sanchez-Leon (Ericsson) - Sometimes breakpoints set and immediately deleted when debugging with GDB (Bug 442394)
  *     Alvaro Sanchez-Leon (Ericsson) - Breakpoint Enable does not work after restarting the application (Bug 456959)
+ *     Ashling
  *******************************************************************************/
 
 package org.eclipse.cdt.dsf.mi.service;
@@ -77,7 +78,9 @@ import org.eclipse.cdt.dsf.debug.service.ISourceLookup;
 import org.eclipse.cdt.dsf.debug.service.ISourceLookup.ISourceLookupDMContext;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService;
 import org.eclipse.cdt.dsf.debug.service.command.ICommandControlService.ICommandControlShutdownDMEvent;
+import org.eclipse.cdt.dsf.gdb.IGdbDebugPreferenceConstants;
 import org.eclipse.cdt.dsf.gdb.internal.GdbPlugin;
+import org.eclipse.cdt.dsf.gdb.launching.GdbLaunch;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpoints.BreakpointAddedEvent;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpoints.BreakpointRemovedEvent;
 import org.eclipse.cdt.dsf.mi.service.MIBreakpoints.BreakpointUpdatedEvent;
@@ -99,9 +102,11 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRunnable;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.ISchedulingRule;
 import org.eclipse.core.runtime.jobs.Job;
@@ -110,8 +115,12 @@ import org.eclipse.debug.core.DebugPlugin;
 import org.eclipse.debug.core.IBreakpointListener;
 import org.eclipse.debug.core.IBreakpointManager;
 import org.eclipse.debug.core.IBreakpointManagerListener;
+import org.eclipse.debug.core.ILaunch;
 import org.eclipse.debug.core.model.IBreakpoint;
+import org.eclipse.debug.ui.DebugUITools;
+import org.eclipse.swt.widgets.Display;
 import org.osgi.framework.BundleContext;
+import com.ashling.riscfree.debug.multicore.model.IMulticoreLaunch;
 
 /**
  * Breakpoint service interface.  The breakpoint service tracks CDT breakpoint
@@ -148,6 +157,7 @@ public class MIBreakpointsManager extends AbstractDsfService
 	private IBreakpoints fBreakpoints;
 	private IBreakpointManager fBreakpointManager; // Platform breakpoint manager (not this!)
 	private BreakpointActionManager fBreakpointActionManager;
+	private IAdaptable currentDebugContext;
 
 	///////////////////////////////////////////////////////////////////////////
 	// Breakpoints tracking
@@ -1299,9 +1309,105 @@ public class MIBreakpointsManager extends AbstractDsfService
 	@ThreadSafe
 	@Override
 	public void breakpointAdded(final IBreakpoint breakpoint) {
-		breakpointAdded(breakpoint, null, new RequestMonitor(getExecutor(), null));
+		/*
+		 * <CUSTOMIZATION ASHLING>
+		 *TODO:Need to change the Display.getDefault().asyncExec call because its accessing a UI plugin component from a
+		 *Non-UI plugin
+		 */
+
+		Display.getDefault().asyncExec(new Runnable() {
+
+			@Override
+			public void run() {
+				currentDebugContext = DebugUITools.getDebugContext();
+				if (getPreferenceBPFilter()) {
+					/*
+					 * Filtering in the case two different GDB
+					 */
+
+					/*
+					 * Assigning debug context to a global variable because we need to access
+					 * it in the filterContextSpecificThreads(IDsfBreakpointExtension filterExtension,IContainerDMContext appliedContainerDmc)
+					 * method and calling from that method causing the QEMU hang
+					 */
+
+					if (currentDebugContext != null) {
+						ILaunch launch = currentDebugContext.getAdapter(ILaunch.class);
+						if (launch instanceof GdbLaunch) {
+							if (!((GdbLaunch) launch).getSession().getId()
+									.equalsIgnoreCase(MIBreakpointsManager.this.getSession().getId())) {
+								return;
+							}
+						} else if (launch instanceof IMulticoreLaunch) {
+
+							if (!((IMulticoreLaunch) launch).getSession().getId()
+									.equalsIgnoreCase(MIBreakpointsManager.this.getSession().getId())) {
+								return;
+							}
+						}
+					}
+				}
+
+				breakpointAdded(breakpoint, null, new RequestMonitor(getExecutor(), null));
+
+			}
+		});
+		// </CUSTOMIZATION ASHLING>
+	}
+	
+	/*
+	 * <CUSTOMIZATION ASHLING>
+	 *
+	 *
+	 *  ***Don't call this function from non UI thread, it may cause UI hang***
+	 *  This method will obtain the current context and pass it to setThreadFilters method which
+	 *  apply breakpoint to the filtered thread only
+	 *
+	 */
+
+	private void filterContextSpecificThreads(IDsfBreakpointExtension filterExtension,
+			IContainerDMContext appliedContainerDmc) {
+
+		if (currentDebugContext == null) {
+			return;
+		}
+		try {
+			IExecutionDMContext dmContexts = DMContexts
+					.getAncestorOfType(currentDebugContext.getAdapter(IDMContext.class), IExecutionDMContext.class);
+			IContainerDMContext containerDmc = DMContexts
+					.getAncestorOfType(currentDebugContext.getAdapter(IDMContext.class), IContainerDMContext.class);
+			if (dmContexts != null) {
+				if (filterExtension.getThreadFilters(containerDmc) == null
+						&& appliedContainerDmc.equals(containerDmc)) {
+					//Target filter has to be set for the targets which is selected
+					filterExtension.setTargetFilter(appliedContainerDmc);
+				}
+
+				//HACK: The condition get's true if user selected a node which is not a process node, no other options found
+				if (!dmContexts.equals(containerDmc)) {
+					filterExtension.setThreadFilters(new IExecutionDMContext[] { dmContexts });
+				}
+			} else {
+				// Breakpoint is initiated by pressing root of the launch
+				if (filterExtension.getThreadFilters(containerDmc) == null) {
+					filterExtension.setTargetFilter(appliedContainerDmc);
+				}
+			}
+		} catch (CoreException e) {
+			//Nothing to do
+		}
+
 	}
 
+	/*
+	 * This method returns true if the active debug context option in the preference is checked
+	 */
+	private boolean getPreferenceBPFilter() {
+		return Platform.getPreferencesService().getBoolean(GdbPlugin.PLUGIN_ID,
+				IGdbDebugPreferenceConstants.PREF_CONTEXT_BP_FILTER, false, null);
+	}
+
+	// </CUSTOMIZATION ASHLING>
 	/**
 	 * Extension of {@link #breakpointAdded(IBreakpoint)}
 	 *
@@ -1354,7 +1460,10 @@ public class MIBreakpointsManager extends AbstractDsfService
 													IContainerDMContext containerDmc = DMContexts.getAncestorOfType(dmc,
 															IContainerDMContext.class);
 													assert containerDmc != null;
-													if (filterExtension.getThreadFilters(containerDmc) == null) {
+													// <CUSTOMIZATION ASHLING> - Checking the context breakpoint filter in preference is selected or not
+													if (getPreferenceBPFilter()) {
+														filterContextSpecificThreads(filterExtension, containerDmc);
+													} else if (filterExtension.getThreadFilters(containerDmc) == null) {
 														// Do this only if there wasn't already an entry, or else we would
 														// erase the content of that previous entry.
 														// There can be an entry already when a thread-specific breakpoint is created
@@ -1364,6 +1473,7 @@ public class MIBreakpointsManager extends AbstractDsfService
 														// Bug 433329
 														filterExtension.setTargetFilter(containerDmc);
 													}
+													// <CUSTOMIZATION ASHLING>
 												}
 											} catch (CoreException e1) {
 												// Error setting target filter, just skip altogether

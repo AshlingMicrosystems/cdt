@@ -17,6 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
@@ -55,6 +57,12 @@ public class GDBBreakpoints_7_0 extends MIBreakpoints {
 	private ICommandControl fConnection;
 	private IMIRunControl fRunControl;
 	private CommandFactory fCommandFactory;
+	// <CUSTOMIZATION ASHLING>
+	private static Pattern EXCESS_HW_BRKPT_FAIL_MESSAGE_PATTERN = Pattern.compile(
+			"(.+)Cannot insert hardware breakpoint (.+)\\s*:Remote(.+) requested too many Hardware breakpoints(.+)", //$NON-NLS-1$
+			Pattern.CASE_INSENSITIVE);
+	private static String HW_BRKPT_LIMIT_EXCEEDED_ERROR = "Could not insert Hardware Breakpoints. You may have requested too many Hardware breakpoints"; //$NON-NLS-1$
+	// <CUSTOMIZATION ASHLING>
 
 	public GDBBreakpoints_7_0(DsfSession session) {
 		super(session);
@@ -205,9 +213,24 @@ public class GDBBreakpoints_7_0 extends MIBreakpoints {
 
 							@Override
 							protected void handleError() {
-								rm.setStatus(new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED,
-										BREAKPOINT_INSERTION_FAILURE, getStatus().getException()));
-								rm.done();
+								// <CUSTOMIZATION ASHLING>
+								Throwable exception = getStatus().getException();
+								checkAndDelHWBrkptFailureDueToMaxLimit(context, exception.getMessage(),
+										new DataRequestMonitor<Boolean>(getExecutor(), null) {
+											@Override
+											protected void handleCompleted() {
+												Throwable failureException = exception;
+												if (isSuccess() && getData()) {
+													failureException = new Exception(HW_BRKPT_LIMIT_EXCEEDED_ERROR);
+												}
+												rm.setStatus(
+														new Status(IStatus.ERROR, GdbPlugin.PLUGIN_ID, REQUEST_FAILED,
+																BREAKPOINT_INSERTION_FAILURE, failureException));
+												rm.done();
+												super.handleCompleted();
+											}
+										});
+								// <CUSTOMIZATION ASHLING>
 							}
 						});
 			}
@@ -215,6 +238,49 @@ public class GDBBreakpoints_7_0 extends MIBreakpoints {
 
 		fRunControl.executeWithTargetAvailable(context, new Step[] { insertBreakpointStep }, finalRm);
 	}
+
+	// <CUSTOMIZATION ASHLING>
+	/**
+	 * Check whether the failure is due to hardware breakpoint max limit exceeded, and delete the breakpoint.
+	 * This is to ensure that the breakpoint is deleted from gdb and further resume operations are not
+	 * affected [avoid "Command Aborted" error during resume operations].
+	 *
+	 */
+	private void checkAndDelHWBrkptFailureDueToMaxLimit(IBreakpointsTargetDMContext context, String failedMessage,
+			DataRequestMonitor<Boolean> rm) {
+		Matcher matcher = EXCESS_HW_BRKPT_FAIL_MESSAGE_PATTERN.matcher(failedMessage);
+		if (matcher.find()) {
+			String brkptNo = matcher.group(2);
+			fConnection.queueCommand(fCommandFactory.createMIBreakList(context),
+					new DataRequestMonitor<MIBreakListInfo>(getExecutor(), null) {
+						@Override
+						protected void handleCompleted() {
+							if (isSuccess()) {
+								MIBreakpoint[] breakpoints = getData().getMIBreakpoints();
+								for (MIBreakpoint bp : breakpoints) {
+									if (bp.getNumber().equals(brkptNo)) {
+										// check whether it exists in GDB before sending delete command.
+										fConnection.queueCommand(fCommandFactory.createMIBreakDelete(context, brkptNo),
+												new DataRequestMonitor<MIInfo>(getExecutor(), null) {
+													@Override
+													protected void handleCompleted() {
+														rm.done(true);
+														super.handleCompleted();
+													}
+												});
+										super.handleCompleted();
+										return;
+									}
+								}
+							}
+							rm.done(false);
+						}
+					});
+		} else {
+			rm.done(false);
+		}
+	}
+	// <CUSTOMIZATION ASHLING>
 
 	/**
 	 * Add a tracepoint

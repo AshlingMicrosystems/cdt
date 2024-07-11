@@ -99,7 +99,7 @@ public class MIBackendCLIProcess extends AbstractCLIProcess {
 		}
 
 		try {
-			Query<Object> query = new Query<>() {
+			Query<Object> query = new Query<Object>() {
 				@Override
 				protected void execute(final DataRequestMonitor<Object> rm) {
 					if (!DsfSession.isSessionActive(getSession().getId()) || isDisposed()

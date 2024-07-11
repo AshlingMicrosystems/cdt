@@ -22,6 +22,9 @@ import org.eclipse.cdt.dsf.datamodel.IDMContext;
 public class MITargetSelectCore extends MITargetSelect {
 
 	public MITargetSelectCore(IDMContext ctx, String coreFilePath) {
-		super(ctx, new String[] { "core", coreFilePath }); //$NON-NLS-1$
+		//<CUSTOMISATION> ASHLING - Fix for git-lab #228
+		//TODO: Need to revert once RISCV gdb fixes the issue
+		super(ctx, coreFilePath);
+		//super(ctx, new String[] { "core", coreFilePath }); //$NON-NLS-1$
 	}
 }

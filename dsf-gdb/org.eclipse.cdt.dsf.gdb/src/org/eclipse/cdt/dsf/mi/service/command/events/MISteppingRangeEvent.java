@@ -31,11 +31,21 @@ public class MISteppingRangeEvent extends MIStoppedEvent {
 		super(ctx, token, results, frame);
 	}
 
+	// <Ashling customization>
+	protected MISteppingRangeEvent(IExecutionDMContext ctx, int token, MIResult[] results, MIFrame frame,
+			String threadno) {
+		super(ctx, token, results, frame, threadno);
+	}
+	// <Ashling customization>
+
 	/**
 	 * @since 1.1
 	 */
 	public static MISteppingRangeEvent parse(IExecutionDMContext dmc, int token, MIResult[] results) {
 		MIStoppedEvent stoppedEvent = MIStoppedEvent.parse(dmc, token, results);
-		return new MISteppingRangeEvent(stoppedEvent.getDMContext(), token, results, stoppedEvent.getFrame());
+		// <Ashling customization>
+		return new MISteppingRangeEvent(stoppedEvent.getDMContext(), token, results, stoppedEvent.getFrame(),
+				stoppedEvent.getThreadNumber().orElse(null));
+		// <Ashling customization>
 	}
 }
