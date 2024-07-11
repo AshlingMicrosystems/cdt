@@ -308,6 +308,8 @@ public class Messages extends NLS {
 	public static String SymbolTab_3;
 	public static String WorkingSetConfigAction_21;
 	public static String WorkingSetConfigAction_22;
+	public static String AshlingBspLocation_1;
+	public static String AshlingBspLocation_2;
 
 	static {
 		// Initialize resource bundle.
