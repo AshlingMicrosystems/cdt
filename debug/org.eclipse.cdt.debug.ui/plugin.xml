@@ -363,6 +363,13 @@
                menubarPath="debug"
                id="org.eclipse.cdt.debug.ui.actions.RulerToggleBreakpointAction">
          </action>
+         <action
+               class="org.eclipse.cdt.debug.internal.ui.actions.ManageHardwareBreakpointRulerActionDelegate"
+               helpContextId="add_breakpoint_interactive_action_context"
+               id="org.eclipse.cdt.debug.internal.ui.actions.ManageHardwareBreakpointRulerActionDelegate"
+               label="%AddHardwareBreakpoint.label"
+               menubarPath="debug">
+         </action>
       </viewerContribution>
       <viewerContribution
             targetID="#CEditorContext"
@@ -900,7 +907,6 @@
             contextId="org.eclipse.cdt.debug.ui.debugging">
       </contextViewBinding>
       <contextViewBinding
-            autoOpen="false"
             contextId="org.eclipse.cdt.debug.ui.debugging"
             viewId="org.eclipse.debug.ui.ModuleView"/>
      <contextViewBinding
@@ -1689,6 +1695,14 @@
           id="org.eclipse.cdt.debug.ui.command.ungroupDebugContexts"
           name="%UngroupDebugContexts.name">
     </command>
+	<!-- <CUSTOMISATION - ASHLING> Rename Functionality on Group -->
+    <command
+          categoryId="org.eclipse.cdt.debug.ui.category.debugViewLayout"
+          description="%RenameGroupDebugContexts.description"
+          id="org.eclipse.cdt.debug.ui.command.renameGroupDebugContexts"
+          name="%RenameGroupDebugContexts.name">
+    </command>
+	<!--<CUSTOMISATION>-->
     <command
           categoryId="org.eclipse.cdt.debug.ui.category.debugViewLayout"
           description="%Connect.description"
@@ -1773,6 +1787,12 @@
             class="org.eclipse.cdt.debug.internal.ui.commands.UngroupDebugContextsCommandHandler"
             commandId="org.eclipse.cdt.debug.ui.command.ungroupDebugContexts">
       </handler>
+	  <!-- <CUSTOMISATION - ASHLING> Rename Functionality on Group-->
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.RenameGroupDebugContextsCommandHandler"
+            commandId="org.eclipse.cdt.debug.ui.command.renameGroupDebugContexts">
+      </handler>
+	  <!--<CUSTOMISATION>-->
       <handler
             class="org.eclipse.cdt.debug.internal.ui.commands.ConnectCommandHandler"
             commandId="org.eclipse.cdt.debug.ui.command.connect">
@@ -2379,6 +2399,30 @@
 			   		</and>
           	</visibleWhen>
          </command>
+		 <!--<CUSTOMISATION - ASHLING> Rename Functionality on Group-->
+         <command
+			commandId="org.eclipse.cdt.debug.ui.command.renameGroupDebugContexts"
+			label="%RenameGroupDebugContexts.name">
+          	<visibleWhen
+            	checkEnabled="false">
+            		<and>
+						<reference
+		            		definitionId="org.eclipse.cdt.debug.ui.testDebugViewLayoutActionSetActive">
+		      			</reference>
+		         		<with
+		               		variable="debugContext">
+		               		<iterate
+								ifEmpty="false"
+                              	operator="and">
+                            	<test
+	        	        			property="org.eclipse.cdt.debug.ui.isRenameGroupDebugContextsVisible">
+	    	           			</test>
+	    	           		</iterate>
+			         	</with>
+			   		</and>
+          	</visibleWhen>
+         </command>
+		 <!--<CUSTOMISATION>-->
       </menuContribution>
 <!--
       <menuContribution
@@ -2677,35 +2721,18 @@
            name="%GenericTarget.name">
      </wizard2>
   </extension>
-  
-  <!-- Activity definition that controls the visibility of  Toggle Instruction Step Mode command-->
-  <extension point="org.eclipse.ui.activities">
-   <category
-         id="org.eclipse.cdt.debug.ui.category"
-         name="%org.eclipse.cdt.debug.ui.category.name"
-         description="%org.eclipse.cdt.debug.ui.category.description">
-   </category>
-
-   <activity
-         id="org.eclipse.cdt.debug.ui.activity.toggleInstructionStepMode"
-         name="%org.eclipse.cdt.debug.ui.activity.toggleInstructionStepMode.name"
-         description="%org.eclipse.cdt.debug.ui.activity.toggleInstructionStepMode.description">
-   </activity>
-
-   <activityPatternBinding
-         activityId="org.eclipse.cdt.debug.ui.activity.toggleInstructionStepMode"
-         pattern="org\.eclipse\.cdt\.debug\.ui/main\.toolbar:org\.eclipse\.cdt\.debug\.ui\.ToggleInstructionStepModeCommand">
-   </activityPatternBinding>
-   <activityPatternBinding
-         activityId="org.eclipse.cdt.debug.ui.activity.toggleInstructionStepMode"
-         pattern="org\.eclipse\.cdt\.debug\.ui/main\.run\.menu:org\.eclipse\.cdt\.debug\.ui\.ToggleInstructionStepModeCommand">
-   </activityPatternBinding>
-
-   <categoryActivityBinding
-         activityId="org.eclipse.cdt.debug.ui.activity.toggleInstructionStepMode"
-         categoryId="org.eclipse.cdt.debug.ui.category">
-   </categoryActivityBinding>
-</extension>
-  
-    
+  <extension
+         point="org.eclipse.debug.ui.memoryRenderings">
+         <!-- CUSTOMIZATION ASHLING: made hexint the default for Memory view-->
+      <renderingBindings
+            defaultIds="org.eclipse.debug.ui.rendering.hexint"
+            primaryId="org.eclipse.debug.ui.rendering.hexint"
+            renderingIds="org.eclipse.debug.ui.rendering.hexint">
+      </renderingBindings>
+      <renderingType
+            class="org.eclipse.cdt.debug.internal.ui.disassembly.rendering.DisassemblyRenderingTypeDelegate"
+            id="org.eclipse.cdt.debug.ui.rendering.disassembly"
+            name="%DisassemblyRendering.name">
+      </renderingType>
+   </extension> 
 </plugin>

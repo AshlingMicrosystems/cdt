@@ -11,6 +11,7 @@
  * Contributors:
  *     Patrick Chuong (Texas Instruments) - Pin and Clone Supports (331781)
  *     Patrick Chuong (Texas Instruments) - Bug 358135
+ *     Ashling
  *****************************************************************/
 package org.eclipse.cdt.debug.internal.ui.pinclone;
 
@@ -37,7 +38,8 @@ public class DebugEventFilterService {
 	 * A debug context event listen that provides filter support
 	 * for the pinned debug context.
 	 */
-	private class DebugEventFilter implements IDebugContextListener {
+	//<CUSTOMIZATION/> ASHLING - Made the class as public
+	public class DebugEventFilter implements IDebugContextListener {
 		private final DebugContextPinProvider fProvider;
 
 		private DebugEventFilter(DebugContextPinProvider provider) {
@@ -148,4 +150,10 @@ public class DebugEventFilterService {
 		contextService.removeDebugContextProvider(contextProvider);
 		contextProvider.dispose();
 	}
+
+	//<CUSTOMIZATION> ASHLING
+	public Map<IWorkbenchPart, DebugEventFilter> getFilterMAp() {
+		return fFilterMap;
+	}
+	//</CUSTOMIZATION>
 }

@@ -29,6 +29,7 @@ import org.eclipse.cdt.debug.core.model.ICWatchpoint;
 import org.eclipse.cdt.debug.ui.breakpoints.AbstractToggleBreakpointAdapter;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.ui.IWorkbenchPart;
 
 /**
@@ -37,6 +38,8 @@ import org.eclipse.ui.IWorkbenchPart;
  * @since 7.2
  */
 public class ToggleBreakpointAdapter extends AbstractToggleBreakpointAdapter {
+
+	private int breakPointType = ICBreakpointType.REGULAR;
 
 	@Override
 	protected ICLineBreakpoint findLineBreakpoint(String sourceHandle, IResource resource, int lineNumber)
@@ -107,6 +110,20 @@ public class ToggleBreakpointAdapter extends AbstractToggleBreakpointAdapter {
 	}
 
 	protected int getBreakpointType() {
-		return ICBreakpointType.REGULAR;
+		//return ICBreakpointType.REGULAR;
+		//CUSTOMIZATION - Ashling
+		return breakPointType;
+	}
+
+	//CUSTOMIZATION - Ashling
+	public void toggleLineBreakpoints(IWorkbenchPart part, ISelection selection, boolean hardware)
+			throws CoreException {
+		if (hardware)
+			breakPointType = ICBreakpointType.HARDWARE;
+		else
+			breakPointType = ICBreakpointType.REGULAR;
+
+		super.toggleLineBreakpoints(part, selection);
+
 	}
 }
