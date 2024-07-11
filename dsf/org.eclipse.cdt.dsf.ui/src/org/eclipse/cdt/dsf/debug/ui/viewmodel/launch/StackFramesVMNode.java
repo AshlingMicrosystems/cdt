@@ -190,7 +190,7 @@ public class StackFramesVMNode extends AbstractDMVMNode
 						String function = (String) properties.get(ILaunchVMConstants.PROP_FRAME_FUNCTION);
 						String module = (String) properties.get(ILaunchVMConstants.PROP_FRAME_MODULE);
 						return function != null && !function.isEmpty() && function.contains(")") && //$NON-NLS-1$
-								module != null && !module.isEmpty();
+						module != null && !module.isEmpty();
 					}
 				}, new LabelText(MessagesForLaunchVM.StackFramesVMNode_No_columns__No_line__add_parens__text_format,
 						new String[] { ILaunchVMConstants.PROP_FRAME_ADDRESS, ILaunchVMConstants.PROP_FRAME_FUNCTION,
@@ -200,7 +200,7 @@ public class StackFramesVMNode extends AbstractDMVMNode
 						String function = (String) properties.get(ILaunchVMConstants.PROP_FRAME_FUNCTION);
 						String module = (String) properties.get(ILaunchVMConstants.PROP_FRAME_MODULE);
 						return function != null && !function.isEmpty() && !function.contains(")") && //$NON-NLS-1$
-								module != null && !module.isEmpty();
+						module != null && !module.isEmpty();
 					}
 				}, new LabelText(MessagesForLaunchVM.StackFramesVMNode_No_columns__No_function__text_format,
 						new String[] { ILaunchVMConstants.PROP_FRAME_ADDRESS, ILaunchVMConstants.PROP_FRAME_MODULE }) {
@@ -699,7 +699,7 @@ public class StackFramesVMNode extends AbstractDMVMNode
 					// which case, the refresh will occur when the stepping sequence slows down or stops.  Trying to
 					// refresh the whole stack trace with every step would slow down stepping too much.
 					if (triggeringCtx == null || !runControlService.isStepping(triggeringCtx)) {
-						parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT);
+						parentDelta.setFlags(parentDelta.getFlags() | IModelDelta.CONTENT | IModelDelta.STATE);
 					}
 
 					rm.done();

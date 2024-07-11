@@ -24,18 +24,22 @@ import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.eclipse.cdt.debug.core.CDebugUtils;
 import org.eclipse.cdt.dsf.concurrent.ConfinedToDsfExecutor;
+import org.eclipse.cdt.dsf.concurrent.CountingRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.DsfExecutor;
 import org.eclipse.cdt.dsf.concurrent.DsfRunnable;
 import org.eclipse.cdt.dsf.concurrent.IDsfStatusConstants;
+import org.eclipse.cdt.dsf.concurrent.ImmediateExecutor;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.ThreadSafe;
 import org.eclipse.cdt.dsf.datamodel.AbstractDMEvent;
 import org.eclipse.cdt.dsf.datamodel.DMContexts;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
+import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IExecutionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.ISuspendedDMEvent;
@@ -346,11 +350,52 @@ public final class SteppingController {
 	 * Checks whether a step command can be queued up for given context.
 	 */
 	public void canEnqueueStep(IExecutionDMContext execCtx, StepType stepType, DataRequestMonitor<Boolean> rm) {
-		if (doCanEnqueueStep(execCtx, stepType)) {
-			rm.setData(true);
-			rm.done();
+		//<CUSTOMISATION - ASHLING> Handle the step operations on Process and Group
+		if (execCtx instanceof IContainerDMContext) {
+			getRunControl().getExecutionContexts((IContainerDMContext) execCtx,
+					new DataRequestMonitor<>(ImmediateExecutor.getInstance(), rm) {
+						@Override
+						protected void handleCompleted() {
+							if (isSuccess()) {
+								IExecutionDMContext[] execContexts = getData();
+								AtomicBoolean canStepAny = new AtomicBoolean();
+								CountingRequestMonitor crm = new CountingRequestMonitor(ImmediateExecutor.getInstance(),
+										rm) {
+									@Override
+									protected void handleCompleted() {
+										if (canStepAny.get()) {
+											rm.done(true);
+										} else {
+											rm.done(false);
+										}
+									}
+								};
+								for (IExecutionDMContext dmc : execContexts) {
+									canEnqueueStep(dmc, stepType,
+											new DataRequestMonitor<Boolean>(ImmediateExecutor.getInstance(), crm) {
+												@Override
+												protected void handleSuccess() {
+													if (getData()) {
+														canStepAny.set(true);
+													}
+													crm.done();
+												}
+											});
+								}
+								crm.setDoneCount(execContexts.length);
+							} else {
+								rm.done(false);
+							}
+						}
+					});
 		} else {
-			getRunControl().canStep(execCtx, stepType, rm);
+			//</CUSTOMISATION>
+			if (doCanEnqueueStep(execCtx, stepType)) {
+				rm.setData(true);
+				rm.done();
+			} else {
+				getRunControl().canStep(execCtx, stepType, rm);
+			}
 		}
 	}
 
@@ -433,9 +478,26 @@ public final class SteppingController {
 	public void enqueueStep(final IExecutionDMContext execCtx, final StepType stepType) {
 		if (DEBUG)
 			System.out.println("[SteppingController] enqueueStep ctx=" + execCtx); //$NON-NLS-1$
-		if (!shouldDelayStep(execCtx) || doCanEnqueueStep(execCtx, stepType)) {
-			doEnqueueStep(execCtx, stepType);
-			processStepQueue(execCtx);
+		//<CUSTOMISATION - ASHLING> Handle the step operations on Process and Group
+		if (execCtx instanceof IContainerDMContext) {
+			getRunControl().getExecutionContexts((IContainerDMContext) execCtx,
+					new DataRequestMonitor<>(ImmediateExecutor.getInstance(), null) {
+						@Override
+						protected void handleCompleted() {
+							if (isSuccess()) {
+								IExecutionDMContext[] execContexts = getData();
+								for (IExecutionDMContext dmc : execContexts) {
+									enqueueStep(dmc, stepType);
+								}
+							}
+						}
+					});
+		} else {
+			//</CUSTOMISATION>
+			if (!shouldDelayStep(execCtx) || doCanEnqueueStep(execCtx, stepType)) {
+				doEnqueueStep(execCtx, stepType);
+				processStepQueue(execCtx);
+			}
 		}
 	}
 

@@ -126,7 +126,7 @@ public class WatchExpressionCellModifier implements ICellModifier {
 		if (session == null) {
 			return null;
 		}
-		Query<String> query = new Query<>() {
+		Query<String> query = new Query<String>() {
 			@Override
 			protected void execute(final DataRequestMonitor<String> rm) {
 				// Since cell modifier does not provide the fully qualified

@@ -54,7 +54,13 @@ public class ErrorLabelText extends LabelText {
 					buf.append(MessagesForDebugVM.ErrorLabelText_Error_message__text_page_break_delimiter);
 					buf.append(replaceNewlines(childStatus.getMessage()));
 				}
-				return buf.toString();
+
+				//CUSTOMIZATION - ASHLING Changing the error message to "???" as a general error label
+
+				String error_Message_Invalid = "???";
+				return error_Message_Invalid;
+				//CUSTOMIZATION - ASHLING
+
 			}
 		}
 		return super.getPropertyValue(propertyName, status, properties);

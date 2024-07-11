@@ -1016,7 +1016,8 @@ public class VariableVMNode extends AbstractExpressionVMNode
 			// Call IExpressions.getSubExpressions() to get an Iterable of IExpressionDMContext objects representing
 			// the sub-expressions of the expression represented by the current expression node.
 
-			final DataRequestMonitor<IExpressionDMContext[]> rm = new ViewerDataRequestMonitor<>(dsfExecutor, update) {
+			final DataRequestMonitor<IExpressionDMContext[]> rm = new ViewerDataRequestMonitor<IExpressionDMContext[]>(
+					dsfExecutor, update) {
 				@Override
 				public void handleCompleted() {
 					if (!isSuccess()) {
@@ -1076,7 +1077,8 @@ public class VariableVMNode extends AbstractExpressionVMNode
 		// Call IStack.getLocals() to get an array of IVariableDMContext objects representing the local
 		// variables in the stack frame represented by frameDmc.
 
-		final DataRequestMonitor<IVariableDMContext[]> rm = new ViewerDataRequestMonitor<>(dsfExecutor, update) {
+		final DataRequestMonitor<IVariableDMContext[]> rm = new ViewerDataRequestMonitor<IVariableDMContext[]>(
+				dsfExecutor, update) {
 			@Override
 			public void handleCompleted() {
 				if (!isSuccess()) {
@@ -1145,7 +1147,7 @@ public class VariableVMNode extends AbstractExpressionVMNode
 				// IVariableDMData object to the localsDMData List for later processing (see above).
 
 				for (IVariableDMContext localDMC : localsDMCs) {
-					DataRequestMonitor<IVariableDMData> rm = new DataRequestMonitor<>(dsfExecutor, crm) {
+					DataRequestMonitor<IVariableDMData> rm = new DataRequestMonitor<IVariableDMData>(dsfExecutor, crm) {
 						@Override
 						public void handleSuccess() {
 							localsDMData.add(getData());

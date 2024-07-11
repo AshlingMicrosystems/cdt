@@ -22,6 +22,8 @@ import org.eclipse.cdt.dsf.debug.service.IFormattedValues;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.IDebugVMConstants;
 import org.eclipse.cdt.dsf.debug.ui.viewmodel.actions.VMHandlerUtils;
 import org.eclipse.cdt.dsf.ui.viewmodel.IVMProvider;
+import org.eclipse.debug.core.DebugPlugin;
+import org.eclipse.debug.core.model.IWatchExpression;
 import org.eclipse.debug.internal.ui.viewers.model.provisional.IPresentationContext;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
@@ -65,6 +67,12 @@ public class NumberFormatsContribution extends CompoundContributionItem implemen
 		@Override
 		public void run() {
 			if (isChecked()) {
+				//<CUSTOMISATION> ASHLING - On format change an empty expression is added and removed to refresh UI  - git-lab#197
+				IWatchExpression watchExpression = DebugPlugin.getDefault().getExpressionManager()
+						.newWatchExpression(""); //$NON-NLS-1$
+				DebugPlugin.getDefault().getExpressionManager().addExpression(watchExpression);
+				DebugPlugin.getDefault().getExpressionManager().removeExpression(watchExpression);
+				//</CUSTOMISATION>
 				fContext.setProperty(IDebugVMConstants.PROP_FORMATTED_VALUE_FORMAT_PREFERENCE, fFormatId);
 			}
 		}
