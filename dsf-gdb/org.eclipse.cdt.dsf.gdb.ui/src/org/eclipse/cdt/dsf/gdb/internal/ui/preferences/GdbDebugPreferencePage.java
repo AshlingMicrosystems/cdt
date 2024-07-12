@@ -15,6 +15,7 @@
  *     Anton Gorenkov - A preference to use RTTI for variable types determination (Bug 377536)
  *     IBM Corporation
  *     Marc Khouzam (Ericsson) - Add preference for aggressive breakpoint filtering (Bug 360735)
+ *     Ashling
  *******************************************************************************/
 package org.eclipse.cdt.dsf.gdb.internal.ui.preferences;
 
@@ -666,8 +667,18 @@ public class GdbDebugPreferencePage extends FieldEditorPreferencePage implements
 
 		boolField.fillIntoGrid(group2, 3);
 		addField(boolField);
-		// Need to set layout again.
+		// need to set layout again
 		group2.setLayout(groupLayout);
+
+		// <CUSTOMIZATION ASHLING>- Creating a new checkbox option in GDB Preference
+		boolField = new BooleanFieldEditor(IGdbDebugPreferenceConstants.PREF_CONTEXT_BP_FILTER,
+				MessagesForPreferences.GdbDebugPreferencePage_contextSpecificBpFilter, group2);
+
+		group2.setLayout(groupLayout);
+
+		boolField.fillIntoGrid(group2, 3);
+		addField(boolField);
+		// </CUSTOMIZATION ASHLING>
 
 		boolField = new BooleanFieldEditor(IGdbDebugPreferenceConstants.PREF_TRACES_ENABLE,
 				MessagesForPreferences.GdbDebugPreferencePage_enableTraces_label, group2);

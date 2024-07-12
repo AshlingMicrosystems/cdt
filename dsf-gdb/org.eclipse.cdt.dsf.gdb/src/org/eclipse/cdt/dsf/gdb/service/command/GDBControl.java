@@ -786,7 +786,9 @@ public class GDBControl extends AbstractMIControl implements IGDBControl {
 	 * @since 5.3
 	 */
 	protected IEventProcessor createMIAsyncErrorProcessor(AbstractMIControl connection) {
-		return new MIAsyncErrorProcessor(connection);
+		//<CUSTOMISATION-ASHLING>Suspend Operation Timeout git-lab#900
+		return new MIAsyncErrorProcessor(connection, getServicesTracker());
+		//<CUSTOMISATION>
 	}
 
 	/** @since 5.2 */
