@@ -49,7 +49,7 @@ public class LinkedProposalModel {
 
 	public Iterator<LinkedProposalPositionGroup> getPositionGroupIterator() {
 		if (fPositionGroups == null) {
-			return new Iterator<>() {
+			return new Iterator<LinkedProposalPositionGroup>() {
 				@Override
 				public boolean hasNext() {
 					return false;

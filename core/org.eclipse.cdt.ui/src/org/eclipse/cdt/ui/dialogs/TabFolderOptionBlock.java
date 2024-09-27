@@ -25,8 +25,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CTabFolder;
-import org.eclipse.swt.custom.CTabItem;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -35,6 +33,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
 
 public abstract class TabFolderOptionBlock {
@@ -50,7 +49,7 @@ public abstract class TabFolderOptionBlock {
 	protected ICOptionContainer fParent;
 	private ICOptionPage fCurrentPage;
 
-	private CTabFolder fFolder;
+	private TabFolder fFolder;
 
 	public TabFolderOptionBlock(boolean showMessageArea) {
 		bShowMessageArea = showMessageArea;
@@ -117,7 +116,7 @@ public abstract class TabFolderOptionBlock {
 	}
 
 	protected void createFolder(Composite parent) {
-		fFolder = new CTabFolder(parent, SWT.NONE);
+		fFolder = new TabFolder(parent, SWT.NONE);
 		fFolder.setLayoutData(new GridData(GridData.FILL_BOTH));
 		fFolder.setLayout(new TabFolderLayout());
 
@@ -134,7 +133,7 @@ public abstract class TabFolderOptionBlock {
 	}
 
 	protected void addTab(ICOptionPage tab) {
-		CTabItem item = new CTabItem(fFolder, SWT.NONE);
+		TabItem item = new TabItem(fFolder, SWT.NONE);
 		item.setText(tab.getTitle());
 		Image img = tab.getImage();
 		if (img != null)
@@ -144,9 +143,6 @@ public abstract class TabFolderOptionBlock {
 		tab.createControl(item.getParent());
 		item.setControl(tab.getControl());
 		addOptionPage(tab);
-		if (fFolder.getSelection() == null) {
-			fFolder.setSelection(item);
-		}
 	}
 
 	abstract protected void addTabs();

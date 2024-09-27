@@ -158,7 +158,7 @@ final class CodeAssistAdvancedConfigurationBlock extends OptionsConfigurationBlo
 		}
 	}
 
-	private final Comparator<ModelElement> fCategoryComparator = new Comparator<>() {
+	private final Comparator<ModelElement> fCategoryComparator = new Comparator<ModelElement>() {
 		@Override
 		public int compare(ModelElement o1, ModelElement o2) {
 			return o1.getRank() - o2.getRank();
