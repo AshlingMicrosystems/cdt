@@ -132,6 +132,9 @@
    <feature id="org.eclipse.launchbar.remote.source">
       <category name="launchbar"/>
    </feature>
+   <!-- Republish the tm terminal control that is now Eclipse Platform to our p2 repository -->
+   <bundle id="org.eclipse.tm.terminal.control" version="0.0.0"/>
+   <bundle id="org.eclipse.tm.terminal.control.source" version="0.0.0"/>
    <feature id="org.eclipse.tm.terminal.control.feature">
       <category name="terminal_main"/>
    </feature>
@@ -180,16 +183,42 @@
    <feature id="org.eclipse.tm.terminal.feature.source">
       <category name="terminal_sdk"/>
    </feature>
+   <feature id="org.eclipse.remote">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.serial">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.serial.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.console">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.console.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.telnet">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.telnet.source">
+      <category name="remote_sdk"/>
+   </feature>
+   <feature id="org.eclipse.remote.proxy">
+      <category name="remote"/>
+   </feature>
+   <feature id="org.eclipse.remote.proxy.source">
+      <category name="remote_sdk"/>
+   </feature>
    <bundle id="org.eclipse.cdt.util" version="0.0.0"/>
    <bundle id="org.eclipse.cdt.util.source" version="0.0.0"/>
    <bundle id="org.eclipse.cdt.remote.core" version="0.0.0"/>
    <bundle id="org.eclipse.cdt.remote.core.source" version="0.0.0"/>
-   <bundle id="com.sun.xml.bind" version="0.0.0"/>
-   <bundle id="org.eclipse.orbit.xml-apis-ext" version="0.0.0"/>
-   <bundle id="javax.activation" version="1.2.2.v20221203-1659"/>
-   <bundle id="jakarta.xml.bind-api" version="2.3.3"/>
    <bundle id="com.google.gson" version="0.0.0"/>
-   <bundle id="org.freemarker.freemarker" version="2.3.32.stable"/>
+   <bundle id="org.freemarker.freemarker" version="2.3.34.stable"/>
    <bundle id="org.yaml.snakeyaml" version="0.0.0"/>
    <bundle id="com.sun.jna" version="0.0.0"/>
    <bundle id="com.sun.jna.platform" version="0.0.0"/>
@@ -233,36 +262,6 @@
    <bundle id="org.eclipse.cdt.jsoncdb.nvidia.source">
       <category name="extra-jsoncdb"/>
    </bundle>
-   <feature id="org.eclipse.remote">
-      <category name="remote"/>
-   </feature>
-   <feature id="org.eclipse.remote.source">
-      <category name="remote_sdk"/>
-   </feature>
-   <feature id="org.eclipse.remote.serial">
-      <category name="remote"/>
-   </feature>
-   <feature id="org.eclipse.remote.serial.source">
-      <category name="remote_sdk"/>
-   </feature>
-   <feature id="org.eclipse.remote.console">
-      <category name="remote"/>
-   </feature>
-   <feature id="org.eclipse.remote.console.source">
-      <category name="remote_sdk"/>
-   </feature>
-   <feature id="org.eclipse.remote.telnet">
-      <category name="remote"/>
-   </feature>
-   <feature id="org.eclipse.remote.telnet.source">
-      <category name="remote_sdk"/>
-   </feature>
-   <feature id="org.eclipse.remote.proxy">
-      <category name="remote"/>
-   </feature>
-   <feature id="org.eclipse.remote.proxy.source">
-      <category name="remote_sdk"/>
-   </feature>
    <category-def name="main" label="CDT Main Features"/>
    <category-def name="extra" label="CDT Optional Features"/>
    <category-def name="launchbar" label="LaunchBar"/>

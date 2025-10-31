@@ -6,6 +6,7 @@ pipeline {
   }
   options {
     timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '2'))
   }
   stages {
     stage('initialize PGP') {
@@ -53,7 +54,47 @@ pipeline {
                       -Dmaven.repo.local=/home/jenkins/.m2/repository \
                       --settings /home/jenkins/.m2/settings.xml \
                       '''
+                sh '''
+                  echo "TIMESTAMP: $(date)" > releng/org.eclipse.cdt.repo/target/repository/ci-and-git-info.txt
+                  echo "CI URL: ${BUILD_URL}" >> releng/org.eclipse.cdt.repo/target/repository/ci-and-git-info.txt
+                  echo "Most recent git commits: (output of  git log --graph --pretty='tformat:%h [%ci] - %s' -20)"  >> releng/org.eclipse.cdt.repo/target/repository/ci-and-git-info.txt
+                  git log --graph --pretty='tformat:%h [%ci] - %s' -20 | tee -a releng/org.eclipse.cdt.repo/target/repository/ci-and-git-info.txt
+                '''
               }
+            }
+          }
+        }
+      }
+    }
+    stage('Deploy Snapshot') {
+      steps {
+        container('jnlp') {
+          timeout(activity: true, time: 20) {
+            sshagent ( ['projects-storage.eclipse.org-bot-ssh']) {
+              sh '''
+                  SSHUSER="genie.cdt@projects-storage.eclipse.org"
+                  SSH="ssh ${SSHUSER}"
+                  SCP="scp"
+
+
+                  DOWNLOAD=download.eclipse.org/tools/cdt/builds/cdt/$BRANCH_NAME
+                  DOWNLOAD_MOUNT=/home/data/httpd/$DOWNLOAD
+
+                  # Deploying build to nightly location on download.eclipse.org
+                  if $SSH test -e ${DOWNLOAD_MOUNT}-new; then
+                      $SSH rm -r ${DOWNLOAD_MOUNT}-new
+                  fi
+                  if $SSH test -e ${DOWNLOAD_MOUNT}-last; then
+                      $SSH rm -r ${DOWNLOAD_MOUNT}-last
+                  fi
+                  $SSH mkdir -p ${DOWNLOAD_MOUNT}-new
+                  $SCP -rp releng/org.eclipse.cdt.repo/target/repository/* "${SSHUSER}:"${DOWNLOAD_MOUNT}-new
+                  $SCP -rp releng/org.eclipse.cdt.repo/target/org.eclipse.cdt.repo.zip "${SSHUSER}:"${DOWNLOAD_MOUNT}-new
+                  if $SSH test -e ${DOWNLOAD_MOUNT}; then
+                      $SSH mv ${DOWNLOAD_MOUNT} ${DOWNLOAD_MOUNT}-last
+                  fi
+                  $SSH mv ${DOWNLOAD_MOUNT}-new ${DOWNLOAD_MOUNT}
+              '''
             }
           }
         }

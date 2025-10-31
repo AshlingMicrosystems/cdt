@@ -1,5 +1,5 @@
 #*******************************************************************************
-# Copyright (c) 2002, 2015, 2020 QNX Software Systems and others.
+# Copyright (c) 2002, 2015, 2024 QNX Software Systems and others.
 #
 # This program and the accompanying materials
 # are made available under the terms of the Eclipse Public License 2.0
@@ -11,6 +11,7 @@
 # Contributors:
 #     QNX Software Systems - initial API and implementation
 #     Torbjörn Svensson - Bug 521515 - Adopted jenkins build
+#     Tue Ton - support for Windows on Arm64
 #*******************************************************************************/
 SHELL=/bin/bash -o pipefail
 ifeq ($(JAVA_HOME),)
@@ -20,13 +21,15 @@ endif
 REPRODUCIBLE_BUILD_WRAPPER := $(shell git rev-parse --show-toplevel)/releng/scripts/reproducible_build_wrapper.py
 
 OS_DIR_WIN32_X86_64 := ../../org.eclipse.cdt.core.win32.x86_64/os/win32/x86_64
+OS_DIR_WIN32_AARCH64 := ../../org.eclipse.cdt.core.win32.aarch64/os/win32/aarch64
 OS_DIR_LINUX_X86_64 := ../../org.eclipse.cdt.core.linux.x86_64/os/linux/x86_64
 OS_DIR_LINUX_AARCH64 := ../../org.eclipse.cdt.core.linux.aarch64/os/linux/aarch64
 OS_DIR_LINUX_PPC64LE := ../../org.eclipse.cdt.core.linux.ppc64le/os/linux/ppc64le
 OS_DIR_MACOS_X86_64 := ../../org.eclipse.cdt.core.macosx/os/macosx/x86_64
 OS_DIR_MACOS_AARCH64 := ../../org.eclipse.cdt.core.macosx/os/macosx/aarch64
 
-COMMON_CFLAGS :=  -Wall -pedantic -Werror
+COMMON_CFLAGS :=  -Wall -pedantic -Werror -std=gnu11
+COMMON_CCFLAGS :=  -Wall -pedantic -Werror -std=gnu++14
 
 UNAME = $(shell uname)
 ifeq ($(UNAME),Linux)
@@ -52,10 +55,18 @@ LIBS = \
 	$(OS_DIR_MACOS_AARCH64)/libspawner.jnilib \
 	$(OS_DIR_MACOS_AARCH64)/libpty.jnilib
 else
+ifeq ($(findstring ARM64,$(UNAME)),ARM64)
+COMMON_CFLAGS :=  -Wall -pedantic -std=gnu11
+COMMON_CCFLAGS :=  -Wall -pedantic -std=gnu++14
+LIBS = \
+	$(OS_DIR_WIN32_AARCH64)/starter.exe \
+	$(OS_DIR_WIN32_AARCH64)/spawner.dll
+else
 LIBS = \
 	$(OS_DIR_WIN32_X86_64)/starter.exe \
 	$(OS_DIR_WIN32_X86_64)/spawner.dll \
 	$(OS_DIR_WIN32_X86_64)/pty.dll
+endif
 endif
 endif
 
@@ -72,7 +83,9 @@ MAC_TO_SIGN=$(OS_DIR_MACOS_X86_64)/libspawner.jnilib \
 	$(OS_DIR_MACOS_AARCH64)/libpty.jnilib
 WIN_TO_SIGN=$(OS_DIR_WIN32_X86_64)/starter.exe \
 	$(OS_DIR_WIN32_X86_64)/spawner.dll \
-	$(OS_DIR_WIN32_X86_64)/pty.dll
+	$(OS_DIR_WIN32_X86_64)/pty.dll \
+	$(OS_DIR_WIN32_AARCH64)/starter.exe \
+	$(OS_DIR_WIN32_AARCH64)/spawner.dll
 ### This block of code also exists in native/org.eclipse.cdt.native.serial/native_src/Makefile
 TMPDIR := $(shell mktemp -d -t production-XXXXXXXXXX)
 .PHONY: production
@@ -116,10 +129,27 @@ $(OS_DIR_WIN32_X86_64)/spawner.dll: win/iostream.c win/raise.c win/spawner.c win
 $(OS_DIR_WIN32_X86_64)/pty.dll: win/pty.cpp win/pty_dllmain.cpp  win/util.c
 	mkdir -p $(dir $@) && \
 	$(REPRODUCIBLE_BUILD_WRAPPER) \
-	x86_64-w64-mingw32-g++ $(COMMON_CFLAGS) -o $@ -Iinclude -Iwin/include -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/win32" \
+	x86_64-w64-mingw32-g++ $(COMMON_CCFLAGS) -o $@ -Iinclude -Iwin/include -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/win32" \
 		-DUNICODE \
 		$^ \
 		-Wl,--kill-at --shared -L$(OS_DIR_WIN32_X86_64) -lwinpty -static-libstdc++ -static-libgcc
+
+# Windows aarch64
+$(OS_DIR_WIN32_AARCH64)/starter.exe: win/starter.c win/util.c
+	mkdir -p $(dir $@) && \
+	$(REPRODUCIBLE_BUILD_WRAPPER) \
+	aarch64-w64-mingw32-gcc $(COMMON_CFLAGS) -o $@ -Iinclude -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/win32" \
+		-DUNICODE \
+		$^ \
+		-lpsapi
+
+$(OS_DIR_WIN32_AARCH64)/spawner.dll: win/iostream.c win/raise.c win/spawner.c win/Win32ProcessEx.c win/util.c
+	mkdir -p $(dir $@) && \
+	$(REPRODUCIBLE_BUILD_WRAPPER) \
+	aarch64-w64-mingw32-gcc $(COMMON_CFLAGS) -o $@ -Iinclude -I"$(JAVA_HOME)/include" -I"$(JAVA_HOME)/include/win32" \
+		-DUNICODE \
+		$^ \
+		-Wl,--kill-at --shared
 
 # Linux x86_64
 $(OS_DIR_LINUX_X86_64)/libspawner.so: unix/spawner.c unix/io.c unix/exec_unix.c unix/exec_pty.c unix/openpty.c unix/pfind.c

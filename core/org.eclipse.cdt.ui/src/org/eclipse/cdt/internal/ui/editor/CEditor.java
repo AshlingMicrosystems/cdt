@@ -74,6 +74,7 @@ import org.eclipse.cdt.internal.ui.search.IOccurrencesFinder;
 import org.eclipse.cdt.internal.ui.search.IOccurrencesFinder.OccurrenceLocation;
 import org.eclipse.cdt.internal.ui.search.OccurrencesFinder;
 import org.eclipse.cdt.internal.ui.search.actions.SelectionSearchGroup;
+import org.eclipse.cdt.internal.ui.switchtolsp.ISwitchToLsp;
 import org.eclipse.cdt.internal.ui.text.CHeuristicScanner;
 import org.eclipse.cdt.internal.ui.text.CPairMatcher;
 import org.eclipse.cdt.internal.ui.text.CSourceViewerScalableConfiguration;
@@ -111,6 +112,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.SafeRunner;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.jobs.Job;
@@ -2786,26 +2788,20 @@ public class CEditor extends TextEditor
 
 	@Override
 	protected ISourceViewer createSourceViewer(Composite parent, IVerticalRuler ruler, int styles) {
-		IPreferenceStore store = getPreferenceStore();
-		ISourceViewer sourceViewer = new AdaptedSourceViewer(parent, ruler, getOverviewRuler(),
-				isOverviewRulerVisible(), styles, store);
+		Composite editorComposite = createTryLspBanner(parent);
 
-		CSourceViewer cSourceViewer = null;
-		if (sourceViewer instanceof CSourceViewer) {
-			cSourceViewer = (CSourceViewer) sourceViewer;
-		}
+		IPreferenceStore store = getPreferenceStore();
+		AdaptedSourceViewer cSourceViewer = new AdaptedSourceViewer(editorComposite, ruler, getOverviewRuler(),
+				isOverviewRulerVisible(), styles, store);
 
 		/*
 		 * This is a performance optimization to reduce the computation of
 		 * the text presentation triggered by {@link #setVisibleDocument(IDocument)}
 		 */
-		if (cSourceViewer != null && isFoldingEnabled()
-				&& (store == null || !store.getBoolean(PreferenceConstants.EDITOR_SHOW_SEGMENTS)))
+		if (isFoldingEnabled() && (store == null || !store.getBoolean(PreferenceConstants.EDITOR_SHOW_SEGMENTS)))
 			cSourceViewer.prepareDelayedProjection();
 
-		ProjectionViewer projectionViewer = (ProjectionViewer) sourceViewer;
-
-		fProjectionSupport = new ProjectionSupport(projectionViewer, getAnnotationAccess(), getSharedColors());
+		fProjectionSupport = new ProjectionSupport(cSourceViewer, getAnnotationAccess(), getSharedColors());
 		fProjectionSupport.addSummarizableAnnotationType("org.eclipse.ui.workbench.texteditor.error"); //$NON-NLS-1$
 		fProjectionSupport.addSummarizableAnnotationType("org.eclipse.ui.workbench.texteditor.warning"); //$NON-NLS-1$
 		fProjectionSupport.addSummarizableAnnotationType("org.eclipse.search.results"); //$NON-NLS-1$
@@ -2816,14 +2812,37 @@ public class CEditor extends TextEditor
 		fProjectionModelUpdater = CUIPlugin.getDefault().getFoldingStructureProviderRegistry()
 				.getCurrentFoldingProvider();
 		if (fProjectionModelUpdater != null)
-			fProjectionModelUpdater.install(this, projectionViewer);
+			fProjectionModelUpdater.install(this, cSourceViewer);
 
 		if (isFoldingEnabled())
-			projectionViewer.doOperation(ProjectionViewer.TOGGLE);
+			cSourceViewer.doOperation(ProjectionViewer.TOGGLE);
 
-		getSourceViewerDecorationSupport(sourceViewer);
+		getSourceViewerDecorationSupport(cSourceViewer);
 
-		return sourceViewer;
+		return cSourceViewer;
+	}
+
+	/**
+	 * Wraps {@link ISwitchToLsp#createTryLspEditor(org.eclipse.ui.texteditor.ITextEditor, Composite)}
+	 * with the needed service access + fallback checks.
+	 *
+	 * If the {@link ISwitchToLsp} service doesn't exist, or fails, this method
+	 * is a no-op that simply returns its input.
+	 *
+	 * @see ISwitchToLsp#createTryLspEditor(org.eclipse.ui.texteditor.ITextEditor, Composite)
+	 */
+	private Composite createTryLspBanner(Composite parent) {
+		Composite editorComposite = SafeRunner.run(() -> {
+			ISwitchToLsp switchToLsp = PlatformUI.getWorkbench().getService(ISwitchToLsp.class);
+			if (switchToLsp != null) {
+				return switchToLsp.createTryLspEditor(CEditor.this, parent);
+			}
+			return null;
+		});
+		if (editorComposite == null) {
+			editorComposite = parent;
+		}
+		return editorComposite;
 	}
 
 	/** Outliner context menu Id */

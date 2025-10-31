@@ -16,17 +16,17 @@
 
 	<groupId>org.eclipse.cdt</groupId>
 	<artifactId>cdt-parent</artifactId>
-	<version>11.6.1-SNAPSHOT</version>
+	<version>12.1.0-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CDT Parent</name>
 
 	<properties>
 		<required-maven-version>3.9.1</required-maven-version>
-		<tycho-version>4.0.6</tycho-version>
-		<cbi-plugins.version>1.4.3</cbi-plugins.version>
+		<tycho-version>4.0.13</tycho-version>
+		<cbi-plugins.version>1.5.2</cbi-plugins.version>
 		<sonar.core.codeCoveragePlugin>jacoco</sonar.core.codeCoveragePlugin>
-		<cdt-site>https://ci.eclipse.org/cdt/job/cdt/job/cdt_11_6/lastSuccessfulBuild/artifact/releng/org.eclipse.cdt.repo/target/repository</cdt-site>
-		<simrel-site>https://download.eclipse.org/releases/2024-06//</simrel-site>
+		<cdt-site>https://ci.eclipse.org/cdt/job/cdt/job/main/lastSuccessfulBuild/artifact/releng/org.eclipse.cdt.repo/target/repository</cdt-site>
+		<simrel-site>https://download.eclipse.org/staging/2025-03/</simrel-site>
 		<repo-path>tools/cdt/builds/master/nightly</repo-path>
 		<sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
 		<sonar.jacoco.reportPath>${project.basedir}/../../target/jacoco.exec</sonar.jacoco.reportPath>
@@ -35,14 +35,14 @@
 
 		<!-- When changing this value, consider also bumping the version numbers of all the docs plug-ins (those with build-doc profile in pom.xml)
 		     so that compare&replace does not replace the the newly built docs because the only change is in the filtered out index/* resources. -->
-		<help-docs-eclipserun-repo>https://download.eclipse.org/eclipse/updates/4.29/R-4.29-202309031000/</help-docs-eclipserun-repo>
+		<help-docs-eclipserun-repo>https://download.eclipse.org/eclipse/updates/4.33/R-4.33-202409030240/</help-docs-eclipserun-repo>
 
 		<tycho.scmUrl>scm:git:https://github.com/eclipse-cdt/cdt</tycho.scmUrl>
 		<!-- Some old tests, like CDescriptorOldTests, fail due to reflection access. Therefore we add-opens to make that pass -->
 		<base.test.vmargs>-Xms256m -Xmx512m -ea --add-opens=java.xml/com.sun.org.apache.xerces.internal.dom=ALL-UNNAMED</base.test.vmargs>
-		<comparator.repo>https://download.eclipse.org/tools/cdt/releases/11.6/</comparator.repo>
-		<api-baseline.repo>https://download.eclipse.org/tools/cdt/releases/11.6/</api-baseline.repo>
-		<api-baseline.repo.simrel>https://download.eclipse.org/releases/2024-06/</api-baseline.repo.simrel>
+		<comparator.repo>https://download.eclipse.org/tools/cdt/releases/12.0/cdt-12.0.0/</comparator.repo>
+		<api-baseline.repo>https://download.eclipse.org/tools/cdt/releases/12.0/cdt-12.0.0/</api-baseline.repo>
+		<api-baseline.repo.simrel>https://download.eclipse.org/releases/2025-03/</api-baseline.repo.simrel>
 		<!-- these parameters are to control baseline replace and compare. On a local build you want
 		     to avoid baseline replace and compare, especially if you have different versions of Java than
 			 the baseline was built with. This is the default.
@@ -131,6 +131,7 @@
 		<module>core/org.eclipse.cdt.core.linux.ppc64le</module>
 		<module>core/org.eclipse.cdt.core.win32</module>
 		<module>core/org.eclipse.cdt.core.win32.x86_64</module>
+		<module>core/org.eclipse.cdt.core.win32.aarch64</module>
 		<module>core/org.eclipse.cdt.core.macosx</module>
 		<module>core/org.eclipse.cdt.core</module>
 		<module>core/org.eclipse.cdt.ui</module>
@@ -625,7 +626,7 @@
 				<inherited>true</inherited>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-enforcer-plugin</artifactId>
-				<version>3.4.1</version>
+				<version>3.5.0</version>
 				<executions>
 				<execution>
 					<id>enforce-maven-version</id>
@@ -686,6 +687,11 @@
 							<arch>x86_64</arch>
 						</environment>
 						<environment>
+							<os>win32</os>
+							<ws>win32</ws>
+							<arch>aarch64</arch>
+						</environment>
+						<environment>
 							<os>macosx</os>
 							<ws>cocoa</ws>
 							<arch>x86_64</arch>
@@ -732,6 +738,7 @@
 								<plugin id="org.eclipse.cdt.core.linux.x86_64"/>
 								<plugin id="org.eclipse.cdt.core.linux.aarch64"/>
 								<plugin id="org.eclipse.cdt.core.win32.x86_64"/>
+								<plugin id="org.eclipse.cdt.core.win32.aarch64"/>
 								<plugin id="org.eclipse.cdt.doc.user"/>
 								<plugin id="org.eclipse.cdt.debug.gdbjtag"/>
 								<plugin id="org.eclipse.cdt"/>
@@ -763,7 +770,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.11</version>
+				<version>0.8.12</version>
 				<executions>
 					<execution>
 						<id>pre-test</id>
@@ -811,6 +818,16 @@
 					<configuration>
 						<encoding>UTF-8</encoding>
 					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.eclipse.tycho</groupId>
+					<artifactId>tycho-versions-plugin</artifactId>
+					<version>${tycho-version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.eclipse.tycho.extras</groupId>
+					<artifactId>tycho-version-bump-plugin</artifactId>
+					<version>${tycho-version}</version>
 				</plugin>
 				<!-- enable source bundle generation -->
 				<plugin>
@@ -911,6 +928,7 @@
 						<ignoredPatterns>
 							<pattern>META-INF/ECLIPSE_.RSA</pattern>
 							<pattern>META-INF/ECLIPSE_.SF</pattern>
+							<pattern>META-INF/maven/*</pattern>
 							<pattern>about.mappings</pattern>
 							<pattern>index/*</pattern>
 						</ignoredPatterns>
@@ -932,7 +950,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.12.1</version>
+					<version>3.13.0</version>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
@@ -954,7 +972,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-pmd-plugin</artifactId>
-					<version>3.21.2</version>
+					<version>3.26.0</version>
 					<configuration>
 						<inputEncoding>utf-8</inputEncoding>
 						<minimumTokens>100</minimumTokens>
@@ -1057,7 +1075,12 @@
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
 					<artifactId>build-helper-maven-plugin</artifactId>
-					<version>3.5.0</version>
+					<version>3.6.0</version>
+				</plugin>
+				<plugin>
+					<groupId>org.asciidoctor</groupId>
+					<artifactId>asciidoctor-maven-plugin</artifactId>
+					<version>3.1.1</version>
 				</plugin>
 			</plugins>
 		</pluginManagement>

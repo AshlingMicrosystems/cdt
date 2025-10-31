@@ -226,11 +226,6 @@
          <viewShortcut
                id="org.eclipse.ui.views.ProblemView">
          </viewShortcut>
-         <view
-               id="org.eclipse.cdt.debug.ui.executablesView"
-               relative="org.eclipse.ui.console.ConsoleView"
-               relationship="stack">
-         </view>
          <viewShortcut
                id="org.eclipse.cdt.debug.ui.executablesView">
          </viewShortcut>
@@ -280,17 +275,6 @@
                helpContextId="move_to_line_action_context"
                label="%GlobalMoveToLineAction.label"
                menubarPath="org.eclipse.ui.run/stepGroup"/>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeActionDelegate"
-               helpContextId="toggle_instruction_step_mode_action_context"
-               icon="icons/elcl16/instr_step.gif"
-               id="org.eclipse.cdt.debug.ui.actions.ToggleInstructionStepMode"
-               label="%ToggleInstructionStepModeAction.label"
-               menubarPath="org.eclipse.ui.run/stepGroup"
-               state="false"
-               style="toggle"
-               toolbarPath="org.eclipse.debug.ui.main.toolbar/renderGroup">
-		 </action>                              
       </actionSet>
    </extension>
    <extension
@@ -340,27 +324,6 @@
       
    <extension
          point="org.eclipse.ui.popupMenus">
-      <viewerContribution
-            targetID="org.eclipse.debug.ui.DebugView"
-            id="org.eclipse.cdt.debug.ui.debugview.popupMenu">
-         <action
-               state="false"
-               style="toggle"
-               id="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeActionDelegate"
-               class="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeActionDelegate"
-               icon="icons/elcl16/instr_step.gif"
-               helpContextId="toggle_instruction_step_mode_action_context"
-               label="%ToggleInstructionStepModeAction.label"
-               menubarPath="renderGroup"
-               tooltip="%ToggleInstructionStepModeAction.tooltip">
-            <enablement>
-               <pluginState
-                     value="activated"
-                     id="org.eclipse.cdt.debug.ui">
-               </pluginState>
-            </enablement>
-         </action>
-      </viewerContribution>
       <viewerContribution
             targetID="#CEditorRulerContext"
             id="org.eclipse.cdt.debug.ui.CEditorRulerActions">
@@ -677,28 +640,6 @@
          point="org.eclipse.ui.viewActions">
       <viewContribution
             targetID="org.eclipse.debug.ui.DebugView"
-            id="org.eclipse.cdt.debug.ui.debugview.toolbar">
-         <action
-               state="false"
-               style="toggle"
-               id="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeActionDelegate"
-               toolbarPath="renderGroup"
-               class="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeActionDelegate"
-               disabledIcon="icons/dlcl16/instr_step.gif"
-               icon="icons/elcl16/instr_step.gif"
-               label="%ToggleInstructionStepModeAction.label"
-               helpContextId="toggle_instruction_step_mode_action_context"
-               tooltip="%ToggleInstructionStepModeAction.tooltip">
-            <enablement>
-               <pluginState
-                     value="activated"
-                     id="org.eclipse.cdt.debug.ui">
-               </pluginState>
-            </enablement>
-         </action>
-      </viewContribution>
-      <viewContribution
-            targetID="org.eclipse.debug.ui.DebugView"
             id="org.eclipse.cdt.debug.ui.debugView.menu">
          <action
                label="%ShowFullPathsAction.label"
@@ -777,76 +718,6 @@
                helpContextId="add_line_breakpoint_action_context"
                tooltip="%AddLineBreakpoint.tooltip"/>
       </viewContribution>
-      <viewContribution
-            targetID="org.eclipse.debug.ui.RegisterView"
-            id="org.eclipse.debug.ui.registersView.toolbar">
-         <menu
-               label="%Dummy"
-               id="org.eclipse.cdt.debug.ui.refresh">
-            <separator name="refreshGroup"/>
-            <separator name="emptyRefreshGroup"/>
-         </menu>
-      </viewContribution>
-      <viewContribution
-            id="org.eclipse.cdt.debug.ui.expression.toolbar"
-            targetID="org.eclipse.debug.ui.ExpressionView">
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.PinDebugContextActionDelegate"
-               icon="icons/elcl16/toolbar_pinned.gif"
-               id="org.eclipse.pinclone.expression.pinDebugContext"
-               label="%PinView.name "
-               style="toggle"
-               toolbarPath="pinGroup">
-         </action>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.OpenNewViewActionDelegate"
-               icon="icons/elcl16/open_new.gif"
-               id="org.eclipse.pinclone.expression.clone"
-               label="%OpenNewView.name"
-               style="push"
-               toolbarPath="pinGroup">
-         </action>
-      </viewContribution>
-      <viewContribution
-            id="org.eclipse.cdt.debug.ui.variable.toolbar"
-            targetID="org.eclipse.debug.ui.VariableView">
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.PinDebugContextActionDelegate"
-               icon="icons/elcl16/toolbar_pinned.gif"
-               id="org.eclipse.pinclone.variable.pinDebugContext"
-               label="%PinView.name "
-               style="toggle"
-               toolbarPath="pinGroup">
-         </action>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.OpenNewViewActionDelegate"
-               icon="icons/elcl16/open_new.gif"
-               id="org.eclipse.pinclone.variable.clone"
-               label="%OpenNewView.name"
-               style="push"
-               toolbarPath="pinGroup">
-         </action>
-      </viewContribution>
-      <viewContribution
-            id="org.eclipse.cdt.debug.ui.register.toolbar"
-            targetID="org.eclipse.debug.ui.RegisterView">
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.PinDebugContextActionDelegate"
-               icon="icons/elcl16/toolbar_pinned.gif"
-               id="org.eclipse.pinclone.register.pinDebugContext"
-               label="%PinView.name "
-               style="toggle"
-               toolbarPath="pinGroup">
-         </action>
-         <action
-               class="org.eclipse.cdt.debug.internal.ui.actions.OpenNewViewActionDelegate"
-               icon="icons/elcl16/open_new.gif"
-               id="org.eclipse.pinclone.register.clone"
-               label="%OpenNewView.name"
-               style="push"
-               toolbarPath="pinGroup">
-         </action>
-      </viewContribution>   
    </extension>
    <extension
          point="org.eclipse.ui.editorActions">
@@ -1017,8 +888,8 @@
          point="org.eclipse.debug.ui.contextViewBindings">
       <contextViewBinding
             viewId="org.eclipse.debug.ui.MemoryView"
-            contextId="org.eclipse.cdt.debug.ui.debugging">
-      </contextViewBinding>
+            contextId="org.eclipse.cdt.debug.ui.debugging"
+            autoClose="false"/>
       <contextViewBinding
             autoOpen="false"
             contextId="org.eclipse.cdt.debug.ui.debugging"
@@ -1036,6 +907,10 @@
            contextId="org.eclipse.cdt.debug.ui.debugging"
            viewId="org.eclipse.cdt.debug.ui.debuggerConsoleView"
            autoClose="false"/>
+     <contextViewBinding
+           contextId="org.eclipse.cdt.debug.ui.debugging"
+           viewId="org.eclipse.cdt.debug.ui.executablesView"
+           autoClose="false"/>     
    </extension>
    <extension
          point="org.eclipse.ui.editors.annotationTypes">
@@ -1379,9 +1254,181 @@
            id="org.eclipse.debug.ui.actions.BreakpointTypesContribution"
            class="org.eclipse.debug.ui.actions.BreakpointTypesContribution">
        </dynamic>
-    </menu>         
-    </menuContribution>    
-          
+    </menu>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="toolbar:org.eclipse.debug.ui.DebugView?after=additions">
+       <command
+             commandId="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeCommand"
+             disabledIcon="icons/dlcl16/instr_step.gif"
+             helpContextId="toggle_instruction_step_mode_action_context"
+             icon="icons/elcl16/instr_step.gif"
+             label="%ToggleInstructionStepModeAction.label"
+             style="toggle"
+             tooltip="%ToggleInstructionStepModeAction.tooltip">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.debug.ui.isCDTDebugging">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="popup:org.eclipse.debug.ui.DebugView?after=renderGroup">
+       <command
+             commandId="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeCommand"
+             disabledIcon="icons/dlcl16/instr_step.gif"
+             helpContextId="toggle_instruction_step_mode_action_context"
+             icon="icons/elcl16/instr_step.gif"
+             label="%ToggleInstructionStepModeAction.label"
+             style="toggle"
+             tooltip="%ToggleInstructionStepModeAction.tooltip">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.debug.ui.isCDTDebugging">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="menu:org.eclipse.ui.run?endof=stepGroup">
+       <command
+             commandId="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeCommand"
+             disabledIcon="icons/dlcl16/instr_step.gif"
+             helpContextId="toggle_instruction_step_mode_action_context"
+             icon="icons/elcl16/instr_step.gif"
+             label="%ToggleInstructionStepModeAction.label"
+             style="toggle"
+             tooltip="%ToggleInstructionStepModeAction.tooltip">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.debug.ui.isCDTDebugging">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="toolbar:org.eclipse.debug.ui.main.toolbar?after=renderGroup">
+       <command
+             commandId="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeCommand"
+             disabledIcon="icons/dlcl16/instr_step.gif"
+             helpContextId="toggle_instruction_step_mode_action_context"
+             icon="icons/elcl16/instr_step.gif"
+             label="%ToggleInstructionStepModeAction.label"
+             style="toggle"
+             tooltip="%ToggleInstructionStepModeAction.tooltip">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.debug.ui.isCDTDebugging">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="toolbar:org.eclipse.debug.ui.VariableView?after=additions">
+       <separator
+             name="org.eclipse.cdt.debug.ui.pinGroup"
+             visible="true">
+       </separator>
+       <command
+             commandId="org.eclipse.cdt.debug.ui.PinViewCommand"
+             icon="icons/elcl16/toolbar_pinned.gif"
+             label="%PinView.name "
+             style="toggle">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.dsf.ui.canPinViewEnabled">
+             </test>
+          </visibleWhen>
+       </command>
+       <command
+             commandId="org.eclipse.cdt.debug.ui.OpenNewViewCommand"
+             icon="icons/elcl16/open_new.gif"
+             label="%OpenNewView.name"
+             style="push">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.dsf.ui.canPinViewEnabled">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="toolbar:org.eclipse.debug.ui.ExpressionView?after=additions">
+       <separator
+             name="org.eclipse.cdt.debug.ui.pinGroup"
+             visible="true">
+       </separator>
+       <command
+             commandId="org.eclipse.cdt.debug.ui.PinViewCommand"
+             icon="icons/elcl16/toolbar_pinned.gif"
+             label="%PinView.name "
+             style="toggle">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.dsf.ui.canPinViewEnabled">
+             </test>
+          </visibleWhen>
+       </command>
+       <command
+             commandId="org.eclipse.cdt.debug.ui.OpenNewViewCommand"
+             icon="icons/elcl16/open_new.gif"
+             label="%OpenNewView.name"
+             style="push">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.dsf.ui.canPinViewEnabled">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+    <menuContribution
+          allPopups="false"
+          locationURI="toolbar:org.eclipse.debug.ui.RegisterView?after=additions">
+       <separator
+             name="org.eclipse.cdt.debug.ui.pinGroup"
+             visible="true">
+       </separator>
+       <command
+             commandId="org.eclipse.cdt.debug.ui.PinViewCommand"
+             icon="icons/elcl16/toolbar_pinned.gif"
+             label="%PinView.name "
+             style="toggle">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.dsf.ui.canPinViewEnabled">
+             </test>
+          </visibleWhen>
+       </command>
+       <command
+             commandId="org.eclipse.cdt.debug.ui.OpenNewViewCommand"
+             icon="icons/elcl16/open_new.gif"
+             label="%OpenNewView.name"
+             style="push">
+          <visibleWhen
+                checkEnabled="false">
+             <test
+                   property="org.eclipse.cdt.dsf.ui.canPinViewEnabled">
+             </test>
+          </visibleWhen>
+       </command>
+    </menuContribution>
+
    </extension>
    <extension
          point="org.eclipse.core.runtime.adapters">
@@ -1660,6 +1707,22 @@
           id="org.eclipse.cdt.debug.ui.command.loadAllSymbols"
           name="%LoadSymbolsForAllAction.label">
     </command>
+    <command
+          id="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeCommand"
+          name="%ToggleInstructionStepModeAction.label">
+       <state
+             class="org.eclipse.ui.handlers.RegistryToggleState:false"
+             id="org.eclipse.ui.commands.toggleState">
+       </state>
+    </command>
+    <command
+          id="org.eclipse.cdt.debug.ui.PinViewCommand"
+          name="%PinView.name ">
+    </command>
+    <command
+          id="org.eclipse.cdt.debug.ui.OpenNewViewCommand"
+          name="%OpenNewView.name">
+    </command>
  </extension>
  <extension
          point="org.eclipse.ui.handlers">
@@ -1737,7 +1800,19 @@
                </with>
              </and>
            </enabledWhen>
-      </handler>   
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.commands.ToggleInstructionStepModeHandler"
+            commandId="org.eclipse.cdt.debug.internal.ui.actions.ToggleInstructionStepModeCommand">
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.actions.PinViewHandler"
+            commandId="org.eclipse.cdt.debug.ui.PinViewCommand">
+      </handler>
+      <handler
+            class="org.eclipse.cdt.debug.internal.ui.actions.OpenNewViewHandler"
+            commandId="org.eclipse.cdt.debug.ui.OpenNewViewCommand">
+      </handler>
  </extension>
  <extension
          point="org.eclipse.core.expressions.definitions">
@@ -2563,6 +2638,13 @@
            namespace="org.eclipse.cdt.debug.ui"
            properties="createBreakpointAdapt"
            type="org.eclipse.cdt.debug.ui.breakpoints.ICBreakpointContext">
+     </propertyTester>
+     <propertyTester
+           class="org.eclipse.cdt.debug.internal.ui.actions.CDTDebugPropertyTester"
+           id="org.eclipse.cdt.debug.CDTDebugPropertyTester"
+           namespace="org.eclipse.cdt.debug.ui"
+           properties="isCDTDebugging"
+           type="java.lang.Object">
      </propertyTester>
   </extension>
   <extension

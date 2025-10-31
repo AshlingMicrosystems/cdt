@@ -3,7 +3,7 @@ kind: Pod
 spec:
   containers:
   - name: cdt
-    image: quay.io/eclipse-cdt/cdt-infra-plus-eclipse-install@sha256:34d46fc15cdade4f103d3f1043c48441d41b532545e6b9083c17f5db0175bbab
+    image: quay.io/eclipse-cdt/cdt-infra-jipp@sha256:bbaf981ce45baebac4c2fe6b05d85e4f2c0f2c74005e6e648e32827801f35abc
     tty: true
     args: ["/bin/sh", "-c", "/home/vnc/.vnc/xstartup.sh && cat"]
     resources:
@@ -20,6 +20,8 @@ spec:
       readOnly: true
     - name: m2-repo
       mountPath: /home/jenkins/.m2/repository
+    - name: volume-known-hosts
+      mountPath: /home/jenkins/.ssh
     - name: "jenkins-home"
       mountPath: "/home/jenkins"
       readOnly: false
@@ -33,6 +35,9 @@ spec:
       limits:
         memory: "512Mi"
         cpu: "500m"
+    volumeMounts:
+    - name: volume-known-hosts
+      mountPath: /home/jenkins/.ssh
   volumes:
   - name: settings-xml
     secret:
@@ -42,6 +47,9 @@ spec:
         path: settings.xml
   - name: m2-repo
     emptyDir: {}
+  - name: volume-known-hosts
+    configMap:
+      name: known-hosts
   - name: "jenkins-home"
     emptyDir: {}
   - name: tools

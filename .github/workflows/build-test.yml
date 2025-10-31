@@ -5,32 +5,40 @@ on: [push, pull_request]
 jobs:
   build:
 
-    runs-on: ubuntu-20.04
-    timeout-minutes: 90
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: dorny/paths-filter@v2
+    - uses: dorny/paths-filter@v3
       id: filter
       with:
+        # dsf filters are to know when to run dsf-gdb tests (See ref below)
+        # it includes any changes to debug, or anything likely to affect gdb
+        # testing
         filters: |
           dsf:
             - 'dsf-gdb/**'
             - 'dsf/**'
             - 'debug/**'
             - 'jtag/**'
+            - 'pom.xml'
+            - 'releng/**'
+            - '.github/**'
+          docs:
+            - 'doc/org.eclipse.cdt.doc.user/**'
     - name: Set up JDK 21
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '21'
         distribution: 'temurin'
         cache: maven
     - name: Set up Maven
-      uses: stCarolas/setup-maven@07fbbe97d97ef44336b7382563d66743297e442f # v4.5
+      uses: stCarolas/setup-maven@v5
       with:
-        maven-version: 3.9.2
+        maven-version: 3.9.6
     - name: Install GCC & GDB & other build essentials
       run: |
         sudo apt-get update
@@ -49,18 +57,38 @@ jobs:
           -DexcludedGroups=flakyTest,slowTest \
           -Ddsf.gdb.tests.timeout.multiplier=50 \
           -Ddsf-gdb.skip.tests=$(test ${{ steps.filter.outputs.dsf }} == 'false' && echo 'true' || echo 'false') \
-          -Dindexer.timeout=300
+          -Dindexer.timeout=300 \
+          -Dsurefire.rerunFailingTestsCount=3
     - name: Upload Logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success() || failure()
       with:
-        name: Code Cleanliness Detailed Logs
-        path: '*.log'
+        name: Detailed Logs
+        path: '**/*.log'
+    - name: Prepare Test Results for upload
+      if: (success() || failure())
+      run: |
+        cp ${{ github.event_path }} event.json
     - name: Upload Test Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: success() || failure()
       with:
         name: test-results
         path: |
+          event.json
           */*/target/surefire-reports/*.xml
           terminal/plugins/org.eclipse.tm.terminal.test/target/surefire-reports/*.xml
+    - name: Prepare Docs for upload
+      if: (success() || failure()) && steps.filter.outputs.docs
+      run: |
+        mkdir -p docs/user
+        cd docs/user
+        unzip ../../releng/org.eclipse.cdt.repo/target/repository/plugins/org.eclipse.cdt.doc.user_*.jar
+    - name: Upload Docs
+      uses: actions/upload-artifact@v4
+      if: (success() || failure()) && steps.filter.outputs.docs
+      with:
+        name: docs
+        include-hidden-files: true
+        path: |
+          docs/**

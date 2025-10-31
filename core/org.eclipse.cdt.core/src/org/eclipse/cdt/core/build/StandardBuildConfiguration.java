@@ -11,12 +11,16 @@
 package org.eclipse.cdt.core.build;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.ConsoleOutputStream;
@@ -29,9 +33,9 @@ import org.eclipse.cdt.core.envvar.IEnvironmentVariable;
 import org.eclipse.cdt.core.model.ICModelMarker;
 import org.eclipse.cdt.core.resources.IConsole;
 import org.eclipse.cdt.internal.core.build.Messages;
+import org.eclipse.cdt.utils.CommandLineUtil;
 import org.eclipse.core.resources.IBuildConfiguration;
 import org.eclipse.core.resources.IContainer;
-import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -39,8 +43,8 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.launchbar.core.target.ILaunchTarget;
 
 /**
  * A Standard Build Configuration that simply calls a specified command for
@@ -63,13 +67,14 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 	 */
 	public static final String CLEAN_COMMAND = "stdbuild.clean.command"; //$NON-NLS-1$
 
-	private static final String[] DEFAULT_BUILD_COMMAND = new String[] { "make" }; //$NON-NLS-1$
-	private static final String[] DEFAULT_CLEAN_COMMAND = new String[] { "make", "clean" }; //$NON-NLS-1$ //$NON-NLS-2$
+	private static final String DEFAULT_BUILD_COMMAND = "make"; //$NON-NLS-1$
+	private static final String DEFAULT_CLEAN_COMMAND = "make clean"; //$NON-NLS-1$
 
-	private String[] buildCommand = DEFAULT_BUILD_COMMAND;
-	private String[] cleanCommand = DEFAULT_CLEAN_COMMAND;
+	private String buildCommand = DEFAULT_BUILD_COMMAND;
+	private String cleanCommand = DEFAULT_CLEAN_COMMAND;
 	private IContainer buildContainer;
 	private IEnvironmentVariable[] envVars;
+	private Stack<String> directoryStack = new Stack<>();
 
 	public StandardBuildConfiguration(IBuildConfiguration config, String name) throws CoreException {
 		super(config, name);
@@ -77,9 +82,12 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 		setupEnvVars();
 	}
 
-	public StandardBuildConfiguration(IBuildConfiguration config, String name, IToolChain toolChain, String launchMode)
-			throws CoreException {
-		super(config, name, toolChain, launchMode);
+	/**
+	 * @since 9.0
+	 */
+	public StandardBuildConfiguration(IBuildConfiguration config, String name, IToolChain toolChain, String launchMode,
+			ILaunchTarget launchTarget) throws CoreException {
+		super(config, name, toolChain, launchMode, launchTarget);
 		applyProperties();
 		setupEnvVars();
 	}
@@ -99,18 +107,18 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 	private void applyProperties() {
 		setBuildContainer(getProperty(BUILD_CONTAINER));
 
-		String buildCmd = getProperty(BUILD_COMMAND);
-		if (buildCmd != null && !buildCmd.trim().isEmpty()) {
-			buildCommand = buildCmd.split(" "); //$NON-NLS-1$
+		String buildCommand = getProperty(BUILD_COMMAND);
+		if (buildCommand != null && !buildCommand.isBlank()) {
+			this.buildCommand = buildCommand;
 		} else {
-			buildCommand = DEFAULT_BUILD_COMMAND;
+			this.buildCommand = DEFAULT_BUILD_COMMAND;
 		}
 
-		String cleanCmd = getProperty(CLEAN_COMMAND);
-		if (cleanCmd != null && !cleanCmd.trim().isEmpty()) {
-			cleanCommand = cleanCmd.split(" "); //$NON-NLS-1$
+		String cleanCommand = getProperty(CLEAN_COMMAND);
+		if (cleanCommand != null && !cleanCommand.isBlank()) {
+			this.cleanCommand = cleanCommand;
 		} else {
-			cleanCommand = DEFAULT_CLEAN_COMMAND;
+			this.cleanCommand = DEFAULT_CLEAN_COMMAND;
 		}
 	}
 
@@ -163,20 +171,32 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 		}
 	}
 
-	public void setBuildCommand(String[] buildCommand) {
-		if (buildCommand != null) {
+	/**
+	 * Set the build command to use. The string will be converted to
+	 * command line arguments using {@link CommandLineUtil}
+	 *
+	 * @since 9.0
+	 */
+	public void setBuildCommand(String buildCommand) {
+		if (buildCommand != null && !buildCommand.isBlank()) {
 			this.buildCommand = buildCommand;
-			setProperty(BUILD_COMMAND, String.join(" ", buildCommand)); //$NON-NLS-1$
+			setProperty(BUILD_COMMAND, buildCommand);
 		} else {
 			this.buildCommand = DEFAULT_BUILD_COMMAND;
 			removeProperty(BUILD_COMMAND);
 		}
 	}
 
-	public void setCleanCommand(String[] cleanCommand) {
-		if (cleanCommand != null) {
+	/**
+	 * Set the build command to use. The string will be converted to
+	 * command line arguments using {@link CommandLineUtil}
+	 *
+	 * @since 9.0
+	 */
+	public void setCleanCommand(String cleanCommand) {
+		if (cleanCommand != null && !cleanCommand.isBlank()) {
 			this.cleanCommand = cleanCommand;
-			setProperty(CLEAN_COMMAND, String.join(" ", cleanCommand)); //$NON-NLS-1$
+			setProperty(CLEAN_COMMAND, cleanCommand);
 		} else {
 			this.cleanCommand = DEFAULT_CLEAN_COMMAND;
 			removeProperty(CLEAN_COMMAND);
@@ -214,9 +234,9 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 				return null;
 			}
 		case BUILD_COMMAND:
-			return String.join(" ", buildCommand); //$NON-NLS-1$
+			return buildCommand;
 		case CLEAN_COMMAND:
-			return String.join(" ", cleanCommand); //$NON-NLS-1$
+			return cleanCommand;
 		}
 
 		return null;
@@ -238,14 +258,15 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 		try {
 			project.deleteMarkers(ICModelMarker.C_MODEL_PROBLEM_MARKER, false, IResource.DEPTH_INFINITE);
 
-			ConsoleOutputStream outStream = console.getOutputStream();
+			ConsoleOutputStream infoStream = console.getInfoStream();
 
 			Path buildDir = getBuildDirectory();
 
-			outStream.write(String.format(Messages.StandardBuildConfiguration_0, buildDir.toString()));
+			infoStream.write(String.format(Messages.StandardBuildConfiguration_0, buildDir.toString()));
 
+			String[] parsedBuildCommand = CommandLineUtil.argumentsToArray(buildCommand);
 			List<String> command = new ArrayList<>();
-			command.add(buildCommand[0]);
+			command.add(parsedBuildCommand[0]);
 
 			if (!getBuildContainer().equals(getProject())) {
 				Path makefile = Paths.get(getProject().getFile("Makefile").getLocationURI()); //$NON-NLS-1$
@@ -254,15 +275,16 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 				command.add(relative.toString());
 			}
 
-			for (int i = 1; i < buildCommand.length; i++) {
-				command.add(buildCommand[i]);
+			for (int i = 1; i < parsedBuildCommand.length; i++) {
+				command.add(parsedBuildCommand[i]);
 			}
 
 			try (ErrorParserManager epm = new ErrorParserManager(project, getProject().getLocationURI(), this,
 					getToolChain().getErrorParserIds())) {
 				epm.setOutputStream(console.getOutputStream());
 				// run make
-				console.getOutputStream().write(String.format("%s\n", String.join(" ", command))); //$NON-NLS-1$ //$NON-NLS-2$
+				console.getOutputStream()
+						.write(String.format("%s\n", CommandLineUtil.argumentsToString(command, false))); //$NON-NLS-1$
 
 				org.eclipse.core.runtime.Path workingDir = new org.eclipse.core.runtime.Path(
 						getBuildDirectory().toString());
@@ -278,7 +300,7 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 
 				project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
 
-				outStream.write(String.format(Messages.StandardBuildConfiguration_1, epm.getErrorCount(),
+				infoStream.write(String.format(Messages.StandardBuildConfiguration_1, epm.getErrorCount(),
 						epm.getWarningCount(), buildDir.toString()));
 			}
 			return new IProject[] { project };
@@ -294,18 +316,18 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 		try {
 			project.deleteMarkers(ICModelMarker.C_MODEL_PROBLEM_MARKER, false, IResource.DEPTH_INFINITE);
 
-			ConsoleOutputStream outStream = console.getOutputStream();
+			ConsoleOutputStream infoStream = console.getInfoStream();
 
 			Path buildDir = getBuildDirectory();
 
-			outStream.write(String.format(Messages.StandardBuildConfiguration_0, buildDir.toString()));
+			infoStream.write(String.format(Messages.StandardBuildConfiguration_0, buildDir.toString()));
 
 			List<String> command = new ArrayList<>();
 			List<String> buildCommand;
 			if (cleanCommand != null) {
-				buildCommand = Arrays.asList(cleanCommand);
+				buildCommand = Arrays.asList(CommandLineUtil.argumentsToArray(cleanCommand));
 			} else {
-				buildCommand = Arrays.asList(DEFAULT_CLEAN_COMMAND);
+				buildCommand = Arrays.asList(CommandLineUtil.argumentsToArray(DEFAULT_CLEAN_COMMAND));
 			}
 
 			command.add(buildCommand.get(0));
@@ -323,7 +345,7 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 			}
 
 			// run make
-			outStream.write(String.format("%s\n", String.join(" ", command))); //$NON-NLS-1$ //$NON-NLS-2$
+			infoStream.write(String.format("%s\n", CommandLineUtil.argumentsToString(command, false))); //$NON-NLS-1$
 
 			org.eclipse.core.runtime.Path workingDir = new org.eclipse.core.runtime.Path(
 					getBuildDirectory().toString());
@@ -335,7 +357,7 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 
 			watchProcess(console, monitor);
 
-			outStream.write(Messages.CBuildConfiguration_BuildComplete);
+			infoStream.write(Messages.CBuildConfiguration_BuildComplete);
 
 			project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
 		} catch (IOException e) {
@@ -344,4 +366,82 @@ public class StandardBuildConfiguration extends CBuildConfiguration {
 		}
 	}
 
+	private abstract class DirectoryPatternParser {
+		private final Pattern pattern;
+
+		public DirectoryPatternParser(String regex) {
+			this.pattern = Pattern.compile(regex);
+		}
+
+		public void processLine(String line) {
+			Matcher matcher = pattern.matcher(line);
+			if (matcher.find()) {
+				recordDirectoryChange(matcher);
+			}
+		}
+
+		abstract protected void recordDirectoryChange(Matcher matcher);
+	}
+
+	private final List<DirectoryPatternParser> enteringDirectoryPatterns = List.of( //
+			//
+			new DirectoryPatternParser("make\\[(.*)\\]: Entering directory [`'](.*)'") { //$NON-NLS-1$
+				@Override
+				protected void recordDirectoryChange(Matcher matcher) {
+					int level;
+					try {
+						level = Integer.valueOf(matcher.group(1)).intValue();
+					} catch (NumberFormatException e) {
+						level = 0;
+					}
+					String dir = matcher.group(2);
+					/*
+					 * Sometimes make screws up the output, so "leave" events can't be seen. Double-check
+					 * level here.
+					 */
+					int parseLevel = directoryStack.size();
+					for (; level < parseLevel; level++) {
+						if (!directoryStack.empty()) {
+							directoryStack.pop();
+						}
+					}
+					directoryStack.push(dir);
+				}
+			},
+
+			// This is emitted by GNU make using options -w or --print-directory.
+			new DirectoryPatternParser("make: Entering directory [`'](.*)'") { //$NON-NLS-1$
+				@Override
+				protected void recordDirectoryChange(Matcher matcher) {
+					String dir = matcher.group(1);
+					directoryStack.push(dir);
+				}
+			},
+
+			//
+			new DirectoryPatternParser("make(\\[.*\\])?: Leaving directory") { //$NON-NLS-1$
+				@Override
+				protected void recordDirectoryChange(Matcher matcher) {
+					if (!directoryStack.empty()) {
+						directoryStack.pop();
+					}
+				}
+			}
+
+	);
+
+	@Override
+	public boolean processLine(String line) {
+		enteringDirectoryPatterns.forEach(p -> p.processLine(line));
+		return super.processLine(line);
+	}
+
+	@Override
+	public URI getBuildDirectoryURI() throws CoreException {
+		if (!directoryStack.isEmpty()) {
+			return Path.of(directoryStack.peek()).toUri();
+		} else {
+			return super.getBuildDirectoryURI();
+		}
+	}
 }

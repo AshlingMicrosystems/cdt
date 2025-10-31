@@ -158,10 +158,14 @@
           name="org.eclipse.tm.terminal.connector.remote.feature.feature.group"/>
       <requirement
           name="org.eclipse.tm.terminal.feature.feature.group"/>
+      <requirement
+          name="org.eclipse.cdt.lsp.feature.feature.group"/>
       <repositoryList
           name="CDT Latest Released">
         <repository
-            url="https://download.eclipse.org/tools/cdt/builds/11.4/cdt-11.4.0-rc2/"/>
+            url="https://download.eclipse.org/tools/cdt/releases/11.6/cdt-11.6.1/"/>
+        <repository
+            url="https://download.eclipse.org/tools/cdt/releases/cdt-lsp-2.0/cdt-lsp-2.0.0/"/>
       </repositoryList>
     </targlet>
   </setupTask>
@@ -205,7 +209,7 @@
       xsi:type="git:GitCloneTask"
       id="github.clone.cdt-lsp"
       remoteURI="eclipse-cdt/cdt-lsp"
-      checkoutBranch="master">
+      checkoutBranch="main">
     <annotation
         source="http://www.eclipse.org/oomph/setup/InducedChoices">
       <detail
@@ -235,7 +239,8 @@
       vmArguments="-Xms40m -Xmx512M -ea">
     <targlet
         name="CDT"
-        includeAllPlatforms="true">
+        includeAllPlatforms="true"
+        includeBinaryEquivalents="false">
       <requirement
           name="org.eclipse.license.feature.group"/>
       <requirement
@@ -280,7 +285,7 @@
         <repository
             url="https://download.eclipse.org/tm4e/snapshots"/>
         <repository
-            url="https://download.eclipse.org/tools/cdt/releases/latest"/>
+            url="https://download.eclipse.org/tools/cdt/builds/cdt/main/"/>
         <repository
             url="https://download.eclipse.org/tools/orbit/simrel/orbit-aggregation/release"/>
         <repository
