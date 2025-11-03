@@ -8,7 +8,7 @@ Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for contributing information, in
 
 ## Command-line Build instructions with Maven
 
-Eclipse CDT uses the standard Maven and Tycho workflow for building CDT using Maven 3.8 and Java 17. Therefore to package CDT do:
+Eclipse CDT uses the standard Maven and Tycho workflow for building CDT using Maven 3.9 and Java 21. Therefore to package CDT do:
 
 ```
 mvn package
@@ -16,9 +16,49 @@ mvn package
 
 and the resulting p2 repository will be in `releng/org.eclipse.cdt.repo/target/repository`
 
-The current set of options to Maven used for building on the CI can be seen in the Jenkinsfiles on [cdt-infra](https://github.com/eclipse-cdt/cdt-infra/tree/master/jenkins/pipelines/cdt)
+The current set of options to Maven used for building on the CI can be seen in the [Jenkinsfile](https://github.com/eclipse-cdt/cdt/blob/main/Jenkinsfile) and GitHub actions [workflows](https://github.com/eclipse-cdt/cdt/tree/main/.github/workflows)
 
-To build CDT plug-ins you need a standard Maven & Java developement environment. The Dockerfiles used for CDT's images are published in [cdt-infra](https://github.com/eclipse-cdt/cdt-infra/tree/master/docker). The requirements for running all tests successfully and for rebuilding non-Java parts of CDT are much more extensive than standard Maven & Java and include items such as GCC, GDB, yarn, Node, etc. Refer to the Dockerfiles for the current versions of those dependencies.
+To build CDT plug-ins you need a standard Maven & Java development environment. The Dockerfiles used for CDT's images are published in [docker](https://github.com/eclipse-cdt/cdt/tree/main/docker). The requirements for running all tests successfully and for rebuilding non-Java parts of CDT are much more extensive than standard Maven & Java and include items such as GCC, GDB, yarn, Node, etc. Refer to the Dockerfiles for the current versions of those dependencies.
+
+### Checking code cleanliness
+
+The CI build automatically run code cleanliness checks. To run them on your computer it is recommended to use the Docker image, for example like this from the root of the checked out CDT repo:
+
+```sh
+docker run --rm -it -v $(git rev-parse --show-toplevel):/work -w /work/$(git rev-parse --show-prefix) --cap-add=SYS_PTRACE --security-opt seccomp=unconfined quay.io/eclipse-cdt/cdt-infra:latest releng/scripts/check_code_cleanliness.sh
+```
+
+#### Diagnosing code cleanliness failures
+
+##### `baseline and build artifacts have same version but different contents`
+
+An error like this:
+
+```
+Error:  Failed to execute goal org.eclipse.tycho:tycho-p2-plugin:4.0.12:p2-metadata (baselinereplace-p2-metadata) on project org.eclipse.cdt.ui: baseline and build artifacts have same version but different contents
+Error:     no-classifier: different
+Error:        org/eclipse/cdt/internal/ui/ImageCombo.class: different
+```
+
+may be caused because a dependency has changed API in a way that the same CDT source compiles to different binary.
+To diagnose such a problem you can compare the disassembled class files to see what changed:
+
+1. Run the check_code_cleanliness locally using docker (see above for command line)
+2. extract the class from the baseline jar (e.g. `core/org.eclipse.cdt.ui/target/baseline/org.eclipse.cdt.ui-9.0.0.202502172234.jar`)
+3. Using javap, disassemble the baseline and compiled class file. e.g:
+  * `javap -c  baseline/osgi.bundle/org/eclipse/cdt/internal/ui/ImageCombo.class > baseline.asm`
+  * `javap -c  classes/org/eclipse/cdt/internal/ui/ImageCombo.class > after.asm`
+4. Compare the the asm files. e.g:
+  * `diff baseline.asm after.asm` will output something like:
+
+```java
+270c270
+<       17: invokespecial #132                // Method org/eclipse/swt/widgets/TypedListener."<init>":(Lorg/eclipse/swt/internal/SWTEventListener;)V
+---
+>       17: invokespecial #132                // Method org/eclipse/swt/widgets/TypedListener."<init>":(Ljava/util/EventListener;)V
+```
+
+5. With the above information you can track down what may have changed. e.g. See https://github.com/eclipse-cdt/cdt/pull/1159#issuecomment-2858751463 for the results of this worked example.
 
 ### Profiles
 
@@ -29,11 +69,6 @@ There are a number of profiles (-P to mvn) to control the behaviour of the build
 Individual p2 repos can be turned on and off to allow building CDT, or parts of CDT against different target platforms easily. For example, you can:
 - test CDT against a pre-built CDT by using the cdtRepo profile.
 - build the standalone rcp debugger against the latest simrel `mvn verify -DuseSimrelRepo -f debug/org.eclipse.cdt.debug.application.product`
-
-#### build-standalone-debugger-rcp
-
-Using the `build-standalone-debugger-rcp` profile will include the standalone debugger, located
-in `debug/org.eclipse.cdt.debug.application.product`
 
 #### skip-all-tests, skip-tests-except-cdt-ui, skip-tests-except-dsf-gdb, skip-tests-except-cdt-other
 
@@ -123,7 +158,7 @@ There are a few special values that can be specified (see BaseParametrizedTestCa
 The default, defined in the root pom.xml, it is blank, which uses `gdb` and `gdbserver`.
 See BaseParametrizedTestCase for more info.
 
-To build all gdb versions for testing CDT see [download-build-gdb.sh](https://github.com/eclipse-cdt/cdt-infra/blob/master/docker/scripts/download-build-gdb.sh)
+To build all gdb versions for testing CDT see [download-build-gdb.sh](https://github.com/eclipse-cdt/cdt/blob/main/docker/scripts/download-build-gdb.sh)
 
 #### native
 
@@ -157,7 +192,7 @@ An additional tip is to set the following in `.gitconfig` to allow you to diff `
 
 When the host is Windows, getting docker to behave as encoded in the pom.xml may be challenging, instead a command like this will probably work (replace your path to git root). Note that running this in git bash causes problems because of the /work in the command line arguments. (TODO integrate this command line way of running into the pom.xml so the original instructions work.)
 
-`docker 'run' '--rm' '-t' '-v' 'D:\cdt\git\org.eclipse.cdt:/work' '-w' '/work/core/org.eclipse.cdt.core.native' 'quay.io/eclipse-cdt/cdt-infra-eclipse-full:latest' 'make' '-C' 'native_src' 'rebuild'`
+`docker 'run' '--rm' '-t' '-v' 'D:\cdt\git\org.eclipse.cdt:/work' '-w' '/work/core/org.eclipse.cdt.core.native' 'quay.io/eclipse-cdt/cdt-infra:latest' 'make' '-C' 'native_src' 'rebuild'`
 
 See also `jniheaders` profile above.
 

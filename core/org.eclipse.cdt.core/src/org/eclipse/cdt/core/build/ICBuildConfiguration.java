@@ -23,6 +23,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.launchbar.core.target.ILaunchTarget;
 
 /**
  * This is the root interface for "new style" CDT build configurations. Adapting
@@ -33,12 +34,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
  * @since 6.0
  */
 public interface ICBuildConfiguration extends IAdaptable, IScannerInfoProvider {
-
-	/**
-	 * CDT doesn't like that the Platform default config name is an empty string.
-	 * It needs a real name for the name of the build directory, for example.
-	 */
-	public static final String DEFAULT_NAME = "default"; //$NON-NLS-1$
 
 	/**
 	 * @since 6.4
@@ -71,6 +66,13 @@ public interface ICBuildConfiguration extends IAdaptable, IScannerInfoProvider {
 	 * @since 6.4
 	 */
 	default String getLaunchMode() {
+		return null;
+	}
+
+	/**
+	 * @since 9.0
+	 */
+	default ILaunchTarget getLaunchTarget() {
 		return null;
 	}
 
@@ -236,5 +238,4 @@ public interface ICBuildConfiguration extends IAdaptable, IScannerInfoProvider {
 	default boolean supportsProperties(Map<String, String> properties) {
 		return false;
 	}
-
 }

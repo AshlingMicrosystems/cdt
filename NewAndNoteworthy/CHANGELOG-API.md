@@ -8,6 +8,199 @@ This section describes API removals that occurred in past releases, and upcoming
 
 Below is the detailed descriptions of API changes and mitigation efforts API consumers need to take.
 
+## API Changes in CDT 12.1.
+
+### Migrate tm.terminal.control to eclipse platform
+
+The source for `org.eclipse.tm.terminal.control` has been migrated to the Eclipse Platform GitHub repository.
+The new location of this bundle's source is https://github.com/eclipse-platform/eclipse.platform/tree/master/terminal/plugins/org.eclipse.tm.terminal.control
+It was mirgated to platform in https://github.com/eclipse-platform/eclipse.platform/pull/1851 as part of the work to achieve https://github.com/eclipse-platform/eclipse.platform/pull/1762.
+
+There are no API changes, however future direction of this bundle will now be managed by the Eclipse Platform project.
+
+## API Changes in CDT 12.0.
+
+### CDT's Core Build System refactored and improved
+
+Many API changes were made in org.eclipse.cdt.core.build and its surrounding areas, such as CMake and Meson.
+See [CDT Issue#1000](https://github.com/eclipse-cdt/cdt/issues/1000) for background information and motivation for this change.
+The rest of this section attempts to capture the individual changes made to methods.
+
+#### org.eclipse.cdt.core.build.ICBuildConfigurationProvider
+
+Renamed method createBuildConfiguration to createCBuildConfiguration, which reflects it purpose of creating a new Core Build configuration. Also added the ILaunchTarget parameter.
+
+Added method:
+* createCBuildConfiguration(IProject, IToolChain, String, ILaunchTarget, IProgressMonitor)
+
+Removed method:
+* createBuildConfiguration(IProject, IToolChain, String, IProgressMonitor)
+
+Added method allowing extenders to customize the Core Build output directory name.
+* getCBuildConfigName(IProject, String, IToolChain, String, ILaunchTarget)
+
+####  org.eclipse.cdt.core.build.CBuildConfiguration
+
+Removed field:
+
+* org.eclipse.cdt.core.build.ICBuildConfiguration.DEFAULT_NAME
+
+This constant was removed because the name "default" is no longer used to name Core Build configurations. Naming now follows the pattern in getCBuildConfigName, described above.
+
+Removed method:
+
+* org.eclipse.cdt.core.build.CBuildConfiguration.setLaunchMode(String)
+
+#### Simplified constructors in org.eclipse.cdt.core.build.CBuildConfiguration
+
+The following constructors have been removed from CBuildConfiguration:
+
+* org.eclipse.cdt.core.build.CBuildConfiguration.CBuildConfiguration(IBuildConfiguration, String, IToolChain)
+* org.eclipse.cdt.core.build.CBuildConfiguration.CBuildConfiguration(IBuildConfiguration, String, IToolChain, String)
+* org.eclipse.cdt.core.build.CBuildConfiguration.CBuildConfiguration(IBuildConfiguration, IToolChain)
+
+Removing them simplified the API as these constructors were unneeded.
+
+Instead use:
+
+* org.eclipse.cdt.core.build.CBuildConfiguration.CBuildConfiguration(IBuildConfiguration, String)
+* org.eclipse.cdt.core.build.CBuildConfiguration.CBuildConfiguration(IBuildConfiguration, String, IToolChain, String, ILaunchTarget)
+
+The documentation on these constructors has been improved.
+
+#### Simplified constructors in org.eclipse.cdt.cmake.core.CMakeBuildConfiguration
+
+The following constructors have been removed from CMakeBuildConfiguration:
+
+* org.eclipse.cdt.cmake.core.CMakeBuildConfiguration.CMakeBuildConfiguration(IBuildConfiguration, String, IToolChain)
+* org.eclipse.cdt.cmake.core.CMakeBuildConfiguration.CMakeBuildConfiguration(IBuildConfiguration, String, IToolChain, ICMakeToolChainFile, String)
+
+Instead use:
+
+* org.eclipse.cdt.cmake.core.CMakeBuildConfiguration.CMakeBuildConfiguration(IBuildConfiguration, String, IToolChain, ICMakeToolChainFile, String, ILaunchTarget)
+
+#### Simplified constructors in org.eclipse.cdt.core.autotools.core.AutotoolsBuildConfiguration
+
+The following constructors have been removed from AutotoolsBuildConfiguration:
+* org.eclipse.cdt.core.autotools.core.AutotoolsBuildConfiguration.AutotoolsBuildConfiguration(IBuildConfiguration, String, IToolChain, String)
+* org.eclipse.cdt.core.autotools.core.AutotoolsBuildConfiguration.AutotoolsBuildConfiguration(IBuildConfiguration, String, IToolChain)
+
+Instead use:
+
+* org.eclipse.cdt.core.autotools.core.AutotoolsBuildConfiguration.AutotoolsBuildConfiguration(IBuildConfiguration, String, IToolChain, String, ILaunchTarget)
+
+#### Simplified constructors in org.eclipse.cdt.core.build.StandardBuildConfiguration
+
+The following constructors have been removed from StandardBuildConfiguration:
+
+* org.eclipse.cdt.core.build.StandardBuildConfiguration.StandardBuildConfiguration(IBuildConfiguration, String, IToolChain, String)
+
+Instead use:
+
+* org.eclipse.cdt.core.build.StandardBuildConfiguration.StandardBuildConfiguration(IBuildConfiguration, String, IToolChain, String, ILaunchTarget)
+
+#### Simplified constructors in org.eclipse.cdt.internal.meson.core.MesonBuildConfiguration
+
+The following constructors have been removed from MesonBuildConfiguration:
+
+* org.eclipse.cdt.internal.meson.core.MesonBuildConfiguration.MesonBuildConfiguration(IBuildConfiguration, String, IToolChain)
+
+* org.eclipse.cdt.internal.meson.core.MesonBuildConfiguration.MesonBuildConfiguration(IBuildConfiguration, String, IToolChain, IMesonToolChainFile, String)
+
+Instead use:
+
+* org.eclipse.cdt.internal.meson.core.MesonBuildConfiguration.MesonBuildConfiguration(IBuildConfiguration, String, IToolChain, String, ILaunchTarget)
+
+* org.eclipse.cdt.internal.meson.core.MesonBuildConfiguration.MesonBuildConfiguration(IBuildConfiguration, String, IToolChain, IMesonToolChainFile, String, ILaunchTarget)
+
+#### org.eclipse.cdt.core.build.ICBuildConfiguration
+
+Added method:
+
+* org.eclipse.cdt.core.build.ICBuildConfiguration.getLaunchTarget()
+
+#### org.eclipse.cdt.core.build.ICBuildConfigurationManager
+
+The documentation has been improved.
+
+Added method:
+
+* org.eclipse.cdt.core.build.ICBuildConfigurationManager.getBuildConfiguration(IProject, IToolChain, String, ILaunchTarget, IProgressMonitor)
+
+Removed method:
+
+* org.eclipse.cdt.core.build.ICBuildConfigurationManager.getBuildConfiguration(IProject, IToolChain, String, IProgressMonitor)
+
+* org.eclipse.cdt.core.build.ICBuildConfigurationManager.getBuildConfiguration(IProject, Map<String, String>, String, IProgressMonitor)
+
+#### org.eclipse.cdt.debug.core.launch.CoreBuildLaunchConfigDelegate
+
+Removed deprecated method:
+
+* org.eclipse.cdt.debug.core.launch.CoreBuildLaunchConfigDelegate.getBuildConfiguration(IProject, String, ILaunchTarget, IProgressMonitor)
+
+#### org.eclipse.launchbar.core.target.ILaunchTarget
+
+Removed deprecated method:
+
+* org.eclipse.launchbar.core.target.ILaunchTarget.getName()
+
+#### org.eclipse.launchbar.core.target.ILaunchTargetManager
+
+Added method:
+
+* org.eclipse.launchbar.core.target.ILaunchTargetManager.getLocalLaunchTarget()
+
+Added field:
+
+* org.eclipse.launchbar.core.target.ILaunchTargetManager.localLaunchTargetId
+
+#### org.eclipse.launchbar.core.target.LaunchTargetUtils
+
+Added methods that can be used to check/fix the Launch Target name:
+
+* org.eclipse.launchbar.core.target.LaunchTargetUtils.isInvalidName(String)
+* org.eclipse.launchbar.core.target.LaunchTargetUtils.sanitizeName(String)
+
+#### org.eclipse.cdt.debug.core
+- Version bumped to 9.0.0
+- Removed method (already deprecated): 
+  - org.eclipse.cdt.debug.core.launch.CoreBuildLaunchConfigDelegate.getBuildConfiguration(IProject, String, ILaunchTarget, IProgressMonitor)
+
+#### org.eclipse.launchbar.core.target
+- Added method:
+  - org.eclipse.launchbar.core.target.ILaunchTargetManager.getLocalLaunchTarget()
+- Added field:
+  - org.eclipse.launchbar.core.target.ILaunchTargetManager.localLaunchTargetId
+- Added class:
+  - org.eclipse.launchbar.core.target.LaunchTargetUtils
+
+#### org.eclipse.cdt.core.build.CBuildConfiguration.getBuildDirectory() should not be overridden
+
+The `@nooverride` flag was added to `CBuildConfiguration.getBuildDirectory`.
+Extenders should only be overridding `getBuildDirectoryURI` which is part of the `ICBuildConfiguration2` API.
+`getBuildDirectory` is a convenience method to convert URI into Path.
+
+#### org.eclipse.cdt.cmake.core.properties refactored
+
+A significant simplification to the CMake build properties was completed, this included removing some API that was not used.
+The following classes have been removed or modified in API breaking ways:
+
+- org.eclipse.cdt.cmake.core.properties.ICMakePropertiesController removed
+- org.eclipse.cdt.cmake.core.properties.IGeneralProperties removed
+- org.eclipse.cdt.cmake.core.properties.IOsOverrides removed
+- org.eclipse.cdt.cmake.core.properties.ICMakeProperties:
+  - new methods added to compensate for removal of IOsOverrides
+  - reset method removed
+  - spelling corrected for methods with Uninitialized in the name
+  - setWarnUnused renamed to setWarnUnusedVars and isWarnUnused renamed to isWarnUnusedVars
+
+### StandardBuildConfiguration.setBuildCommand(String[]) and StandardBuildConfiguration.setCleanCommand(String[]) removed
+
+These methods (in `org.eclipse.cdt.core.build.StandardBuildConfiguration`) made it difficult to save and load users build and clean command without modifying it.
+They have been replaced with methods that take only a `String` for consistent parsing of command lines.
+See [#1072](https://github.com/eclipse-cdt/cdt/issues/1072) for more details on motivation for this change.
+
 ## API Changes in CDT 11.5.
 
 ### org.eclipse.cdt.make.ui.dialogs.DiscoveredPathContainerPage removed

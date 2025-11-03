@@ -44,8 +44,10 @@ Makefile text
 # Build files
 *.Jenkinsfile text
 Jenkinsfile text
+Dockerfile text
 *.yaml text
 *.yml text
+.dockerignore text
 
 # Qt
 *.pro text
@@ -154,6 +156,15 @@ output-1 text
 *.srec text eol=lf
 test_commands text
 
+# Font awesome files (other files could have the same extensions)
+*.eot binary
+*.less binary
+*.otf binary
+*.scss binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+
 # Other special files
 cdtOptions text
 .clang-format text
@@ -178,3 +189,4 @@ cdtOptions text
 *.py text
 *.xhtml text
 *.entitlements text
+*.adoc text

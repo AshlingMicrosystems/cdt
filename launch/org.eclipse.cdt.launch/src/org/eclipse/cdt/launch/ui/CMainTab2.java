@@ -91,7 +91,7 @@ public class CMainTab2 extends CAbstractMainTab {
 	 */
 	//protected Combo fCoreTypeCombo;
 
-	private final boolean fDontCheckProgram;
+	private boolean fDontCheckProgram = false;
 	private final boolean fSpecifyCoreFile;
 	private final boolean fIncludeBuildSettings;
 
@@ -107,6 +107,13 @@ public class CMainTab2 extends CAbstractMainTab {
 		fDontCheckProgram = (flags & DONT_CHECK_PROGRAM) != 0;
 		fSpecifyCoreFile = (flags & SPECIFY_CORE_FILE) != 0;
 		fIncludeBuildSettings = (flags & INCLUDE_BUILD_SETTINGS) != 0;
+	}
+
+	/**
+	 * @since 11.0
+	 */
+	protected void setDontCheckProgram(boolean dontCheck) {
+		fDontCheckProgram = dontCheck;
 	}
 
 	@Override
