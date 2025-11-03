@@ -28,7 +28,8 @@ Require-Bundle: org.eclipse.ui;bundle-version="[3.207.200,4)",
  org.eclipse.core.resources;bundle-version="[3.22.200,4)",
  org.eclipse.tm.terminal.control;bundle-version="[5.6.0,6.0.0)",
  org.eclipse.cdt.native.serial;bundle-version="[12.1.0,13)",
- org.eclipse.launchbar.ui;bundle-version="[2.5.600,3)"
+ org.eclipse.launchbar.ui;bundle-version="[2.5.600,3)",
+ com.ashling.riscfree.debug.multicore
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Export-Package: org.eclipse.cdt.dsf.gdb.internal.ui;x-friends:="org.eclipse.cdt.docker.launcher",

@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.cdt.core.CCorePlugin;
 import org.eclipse.cdt.core.CCorePreferenceConstants;
 import org.eclipse.cdt.core.model.ITranslationUnit;
+import org.eclipse.cdt.debug.core.model.ISteppingModeTarget;
 import org.eclipse.cdt.debug.internal.core.sourcelookup.CSourceNotFoundElement;
 import org.eclipse.cdt.debug.internal.ui.sourcelookup.CSourceNotFoundEditorInput;
 import org.eclipse.cdt.debug.ui.ICDebugUIConstants;
@@ -85,6 +86,7 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IReusableEditor;
 import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.editors.text.EditorsUI;
@@ -215,6 +217,27 @@ public class DsfSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
 			return Status.OK_STATUS;
 		}
 
+		/*
+		 * <Ashling-customization>-GitLab-#2245
+		 */
+		private void enableInstructionSteppingMode(IDMContext extCtx) {
+			extCtx.getAdapter(ISteppingModeTarget.class).enableInstructionStepping(true);
+
+			Display.getDefault().asyncExec(() -> {
+				final IWorkbenchWindow activeWorkbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+				if (activeWorkbenchWindow != null && activeWorkbenchWindow.getActivePage() != null) {
+					try {
+						activeWorkbenchWindow.getActivePage().showView("org.eclipse.cdt.dsf.debug.ui.disassembly.view");
+					} catch (PartInitException e) {
+						DsfUIPlugin.log(e);
+					}
+				}
+			});
+		}
+		/*
+		 * <Ashling-customization>
+		 */
+
 		private SourceLookupResult performLookup() {
 			IDMContext dmc = fFrameData.fDmc;
 			SourceLookupResult result = new SourceLookupResult(dmc, null, null, null);
@@ -226,6 +249,9 @@ public class DsfSourceDisplayAdapter implements ISourceDisplay, ISteppingControl
 				editorInput = new CSourceNotFoundEditorInput(
 						new CSourceNotFoundElement(dmc, fSourceLookup.getLaunchConfiguration(), fFrameData.fFile));
 				editorId = ICDebugUIConstants.CSOURCENOTFOUND_EDITOR_ID;
+				//<Ashling-customization>-GitLab-#2245
+				enableInstructionSteppingMode(dmc);
+				//<Ashling-customization>-GitLab
 			} else {
 				ISourcePresentation presentation = null;
 				if (fSourceLookup instanceof ISourcePresentation) {
