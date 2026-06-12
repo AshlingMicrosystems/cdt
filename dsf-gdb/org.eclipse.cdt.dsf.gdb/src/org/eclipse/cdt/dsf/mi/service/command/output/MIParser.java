@@ -165,7 +165,7 @@ public class MIParser {
 	/**
 	 * Find OutOfBand Records depending on the starting token.
 	 */
-	public MIOOBRecord parseMIOOBRecord(String line) {
+	public MIOOBRecord parseMIOOBRecord(String line, boolean isMonitorCommandResponse) {
 		StringBuffer buffer = new StringBuffer(line);
 		int id = parseToken(buffer);
 		MIOOBRecord oob = null;
@@ -215,7 +215,13 @@ public class MIParser {
 				break;
 
 			case '@':
-				stream = new MITargetStreamOutput();
+				//ASHLING CUSTOMIZATION - Routing monitor command response to console stream - GitLab#2002
+				if (isMonitorCommandResponse) {
+					stream = new MIConsoleStreamOutput();
+				} else {
+					stream = new MITargetStreamOutput();
+				}
+				//ASHLING CUSTOMIZATION - Routing monitor command response to console stream - GitLab#2002
 				break;
 
 			case '&':

@@ -44,6 +44,7 @@ import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionChangedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMAddress;
 import org.eclipse.cdt.dsf.debug.service.IExpressions.IExpressionDMContext;
 import org.eclipse.cdt.dsf.debug.service.IMemory;
+import org.eclipse.cdt.dsf.debug.service.IMemoryAccessTypeDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerResumedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IContainerSuspendedDMEvent;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.IResumedDMEvent;
@@ -959,6 +960,11 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
 										@Override
 										protected void handleSuccess() {
 											updateMemoryCache(address.add(offset), wordCount, getData(), wordSize);
+											// Invalidate caches for related contexts so that
+											// other monitors targeting the same address (e.g.
+											// a normal monitor vs. an access-type monitor) are
+											// forced to re-read from the target.
+											invalidateRelatedCaches(memoryDMC);
 											// Send the MemoryChangedEvent
 											IAddress[] addresses = new IAddress[wordCount];
 											for (int i = 0; i < wordCount; i++) {
@@ -1039,6 +1045,14 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
 	public void flushCache(IDMContext context) {
 		fCommandCache.reset(context);
 
+		if (context == null) {
+			// Flush ALL memory data caches when no specific context is given
+			for (MIMemoryCache cache : fMemoryCaches.values()) {
+				cache.reset();
+			}
+			return;
+		}
+
 		IMemoryDMContext memoryDMC = DMContexts.getAncestorOfType(context, IMemoryDMContext.class);
 
 		if (memoryDMC != null) {
@@ -1056,5 +1070,36 @@ public class MIMemory extends AbstractDsfService implements IMemory, ICachingSer
 				fMemoryCaches.get(ctx).reset();
 			}
 		}
+	}
+
+	/**
+	 * Resets caches for all contexts that share the same base
+	 * {@link IMemoryDMContext} as the given context, so that other monitors
+	 * (e.g. normal vs. access-type) targeting the same address re-read
+	 * from the target instead of returning stale cached data.
+	 */
+	private void invalidateRelatedCaches(IMemoryDMContext writtenContext) {
+		IMemoryDMContext baseWritten = getBaseContext(writtenContext);
+		for (Map.Entry<IMemoryDMContext, MIMemoryCache> entry : fMemoryCaches.entrySet()) {
+			IMemoryDMContext cachedCtx = entry.getKey();
+			if (cachedCtx != null && !cachedCtx.equals(writtenContext)
+					&& getBaseContext(cachedCtx).equals(baseWritten)) {
+				entry.getValue().reset();
+			}
+		}
+	}
+
+	/**
+	 * Unwraps an {@link IMemoryAccessTypeDMContext} to its parent context.
+	 * Returns the context itself if it is not an access-type wrapper.
+	 */
+	private static IMemoryDMContext getBaseContext(IMemoryDMContext ctx) {
+		if (ctx instanceof IMemoryAccessTypeDMContext) {
+			IDMContext[] parents = ((IDMContext) ctx).getParents();
+			if (parents != null && parents.length > 0 && parents[0] instanceof IMemoryDMContext) {
+				return (IMemoryDMContext) parents[0];
+			}
+		}
+		return ctx;
 	}
 }

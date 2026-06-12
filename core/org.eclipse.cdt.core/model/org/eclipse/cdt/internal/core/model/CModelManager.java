@@ -1374,8 +1374,16 @@ public class CModelManager implements IResourceChangeListener, IContentTypeChang
 		CProjectDescriptionManager.getInstance().removeCProjectDescriptionListener(this);
 		//		CCorePlugin.getDefault().getCDescriptorManager().removeDescriptorListener(factory);
 
-		// Remove ourself from the ContentTypeManager
-		Platform.getContentTypeManager().removeContentTypeChangeListener(factory);
+		/*
+		 * <Ashling customization> - Added check for avoiding  null pointer exception while shutting down.
+		 * This exception always occur during application shutdown and making it hard to track other errors.
+		 */
+		IContentTypeManager ctm = Platform.getContentTypeManager();
+		if (ctm != null) {
+			// Remove ourself from the ContentTypeManager
+			ctm.removeContentTypeChangeListener(this);
+		}
+		/* <Ashling customization> - Git lab ID - 2829*/
 
 		// Do any shutdown of services.
 		ResourcesPlugin.getWorkspace().removeResourceChangeListener(factory);

@@ -27,10 +27,12 @@ import org.eclipse.cdt.core.IAddress;
 import org.eclipse.cdt.dsf.concurrent.DataRequestMonitor;
 import org.eclipse.cdt.dsf.concurrent.Query;
 import org.eclipse.cdt.dsf.concurrent.RequestMonitor;
+import org.eclipse.cdt.dsf.datamodel.IDMContext;
 import org.eclipse.cdt.dsf.debug.internal.provisional.model.IMemoryBlockUpdatePolicyProvider;
 import org.eclipse.cdt.dsf.debug.service.IMemory;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryChangedEvent;
 import org.eclipse.cdt.dsf.debug.service.IMemory.IMemoryDMContext;
+import org.eclipse.cdt.dsf.debug.service.IMemoryAccessTypeDMContext;
 import org.eclipse.cdt.dsf.debug.service.IRunControl;
 import org.eclipse.cdt.dsf.debug.service.IRunControl.StateChangeReason;
 import org.eclipse.cdt.dsf.internal.DsfPlugin;
@@ -302,6 +304,22 @@ public class DsfMemoryBlock extends PlatformObject implements IMemoryBlockExtens
 	@Override
 	public void clearCache() {
 		fUseCachedData = false;
+	}
+
+	/**
+	 * Fully resets the cached memory block data so that the next
+	 * {@link #getBytesFromAddress(BigInteger, long)} call fetches fresh data
+	 * from the target without comparing against (potentially stale) cached
+	 * bytes. Unlike {@link #clearCache()}, which only disables the
+	 * "return-cached-data" short-circuit, this method also discards the
+	 * previously fetched block so no overlap/shift comparison is performed.
+	 *
+	 * @since 2.12
+	 */
+	public void resetCache() {
+		fUseCachedData = false;
+		fBlock = null;
+		fLength = 0;
 	}
 
 	@DsfServiceEventHandler
@@ -717,12 +735,27 @@ public class DsfMemoryBlock extends PlatformObject implements IMemoryBlockExtens
 	@DsfServiceEventHandler
 	public void eventDispatched(IMemoryChangedEvent e) {
 
-		// Check if we are in the same address space
-		if (e.getDMContext().equals(fContext)) {
+		// Compare base memory contexts so that a normal monitor and an
+		// access-type monitor targeting the same address both get updated.
+		if (getBaseContext(e.getDMContext()).equals(getBaseContext(fContext))) {
 			IAddress[] addresses = e.getAddresses();
 			for (int i = 0; i < addresses.length; i++)
 				handleMemoryChange(addresses[i].getValue());
 		}
+	}
+
+	/**
+	 * Unwraps an {@link IMemoryAccessTypeDMContext} to its parent context.
+	 * Returns the context itself if it is not an access-type wrapper.
+	 */
+	private static IMemoryDMContext getBaseContext(IMemoryDMContext ctx) {
+		if (ctx instanceof IMemoryAccessTypeDMContext) {
+			IDMContext[] parents = ctx.getParents();
+			if (parents != null && parents.length > 0 && parents[0] instanceof IMemoryDMContext) {
+				return (IMemoryDMContext) parents[0];
+			}
+		}
+		return ctx;
 	}
 
 	/**

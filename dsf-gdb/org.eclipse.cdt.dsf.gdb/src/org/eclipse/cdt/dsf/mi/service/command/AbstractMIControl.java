@@ -67,6 +67,7 @@ import org.eclipse.cdt.dsf.mi.service.IMICommandControl;
 import org.eclipse.cdt.dsf.mi.service.IMIContainerDMContext;
 import org.eclipse.cdt.dsf.mi.service.IMIExecutionDMContext;
 import org.eclipse.cdt.dsf.mi.service.command.commands.MICommand;
+import org.eclipse.cdt.dsf.mi.service.command.commands.MIInterpreterExec;
 import org.eclipse.cdt.dsf.mi.service.command.commands.RawCommand;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIConst;
 import org.eclipse.cdt.dsf.mi.service.command.output.MIInfo;
@@ -96,6 +97,8 @@ import org.eclipse.osgi.util.NLS;
  * Extending classes need to implement the initialize() and shutdown() methods.
  */
 public abstract class AbstractMIControl extends AbstractDsfService implements IMICommandControl {
+	private static final String MONITOR_COMMAND_IDENTIFIER = "monitor"; //$NON-NLS-1$
+	private static final String MONITOR_SOURCE_IDENTIFIER = "source"; //$NON-NLS-1$
 	private static final String MI_TRACE_IDENTIFIER = "[MI]"; //$NON-NLS-1$
 	private static final int NUMBER_CONCURRENT_COMMANDS = 3;
 	private static final int DEVELOPMENT_TRACE_LIMIT_CHARS = 5000;
@@ -1094,7 +1097,7 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 				}
 			} else if (recordType == MIParser.RecordType.OOBRecord) {
 				// Process OOBs
-				final MIOOBRecord oob = fMiParser.parseMIOOBRecord(line);
+				final MIOOBRecord oob = fMiParser.parseMIOOBRecord(line, isMonitorCommandActive());
 
 				fAccumulatedOOBRecords.add(oob);
 				// limit growth, but only if these are not responses to CLI commands
@@ -1149,6 +1152,29 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 	}
 
 	/**
+	 * Check if a monitor command is currently active.
+	 * //ASHLING CUSTOMIZATION - Routing monitor command response to console stream - GitLab#2002
+	 * @return
+	 */
+	private boolean isMonitorCommandActive() {
+		if (fRxCommands == null)
+			return false;
+		synchronized (fRxCommands) {
+			for (CommandHandle cmd : fRxCommands.values()) {
+				if (cmd.getCommand() instanceof MIInterpreterExec<MIInfo>) {
+					MIInterpreterExec<MIInfo> mic = (MIInterpreterExec<MIInfo>) cmd.getCommand();
+					String[] params = mic.getParameters();
+					if (params != null && params.length > 1 && (params[1].startsWith(MONITOR_COMMAND_IDENTIFIER)
+							|| params[1].startsWith(MONITOR_SOURCE_IDENTIFIER))) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * A thread that will read GDB's stderr stream.
 	 * When a PTY is not being used for the inferior, everything
 	 * the inferior writes to stderr will be output on GDB's stderr.
@@ -1178,7 +1204,7 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 				String line;
 				while ((line = reader.readLine()) != null) {
 					// Create an error MI out-of-band record so that our gdb console prints it.
-					final MIOOBRecord oob = fMiParser.parseMIOOBRecord("&" + line + "\n"); //$NON-NLS-1$//$NON-NLS-2$
+					final MIOOBRecord oob = fMiParser.parseMIOOBRecord("&" + line + "\n", false); //$NON-NLS-1$//$NON-NLS-2$
 					final MIOutput response = new MIOutput(oob, new MIStreamRecord[0]);
 					getExecutor().execute(new DsfRunnable() {
 						@Override
@@ -1276,7 +1302,10 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 		rm.done();
 	}
 
-	private String getGdbVersion() {
+	/**
+	 * @since 6.6
+	 */
+	protected String getGdbVersion() {
 		ILaunch launch = (ILaunch) getSession().getModelAdapter(ILaunch.class);
 		if (launch instanceof GdbLaunch) {
 			IDsfDebugServicesFactory servicesFactory = ((GdbLaunch) launch).getServiceFactory();
@@ -1287,7 +1316,10 @@ public abstract class AbstractMIControl extends AbstractDsfService implements IM
 		return null;
 	}
 
-	private boolean isConcurrentCommandsSupported() {
+	/**
+	 * @since 6.6
+	 */
+	protected boolean isConcurrentCommandsSupported() {
 		if (Platform.getOS().equals(Platform.OS_LINUX)) {
 			// Check if GDB client version is in range [8.3.50, 12.1)
 			// See https://sourceware.org/bugzilla/show_bug.cgi?id=28711 for details

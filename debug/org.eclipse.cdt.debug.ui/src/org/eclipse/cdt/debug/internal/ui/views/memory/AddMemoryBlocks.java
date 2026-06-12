@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
 
+import org.eclipse.cdt.debug.core.model.provisional.IMemoryAccessTypeAwareMemoryBlockRetrieval;
 import org.eclipse.cdt.debug.core.model.provisional.IMemorySpaceAwareMemoryBlockRetrieval;
 import org.eclipse.cdt.debug.internal.core.CRequest;
 import org.eclipse.cdt.debug.ui.CDebugUIPlugin;
@@ -86,6 +87,33 @@ public class AddMemoryBlocks implements IAddMemoryBlocksTarget {
 		}
 	}
 
+	/** Request object used to get the memory access types */
+	private static class GetMemoryAccessTypesRequest extends CRequest
+			implements IMemoryAccessTypeAwareMemoryBlockRetrieval.GetMemoryAccessTypesRequest {
+		String[] fAccessTypes = new String[0];
+		String[] fTooltips = new String[0];
+
+		@Override
+		public String[] getMemoryAccessTypes() {
+			return fAccessTypes;
+		}
+
+		@Override
+		public void setMemoryAccessTypes(String[] accessTypeIds) {
+			fAccessTypes = accessTypeIds;
+		}
+
+		@Override
+		public String[] getMemoryAccessTypeTooltips() {
+			return fTooltips;
+		}
+
+		@Override
+		public void setMemoryAccessTypeTooltips(String[] tooltips) {
+			fTooltips = tooltips;
+		}
+	}
+
 	/* (non-Javadoc)
 	 * @see org.eclipse.debug.ui.actions.IAddMemoryBlocksTarget#addMemoryBlocks(org.eclipse.ui.IWorkbenchPart, org.eclipse.jface.viewers.ISelection)
 	 */
@@ -108,6 +136,41 @@ public class AddMemoryBlocks implements IAddMemoryBlocksTarget {
 
 		// If the backend doesn't support memory spaces, use the standard
 		// (platform) dialog for adding a memory block
+
+		// Before falling through to the platform dialog, check if the
+		// backend supports memory access types
+		if (retrieval instanceof IMemoryAccessTypeAwareMemoryBlockRetrieval) {
+			final IMemoryAccessTypeAwareMemoryBlockRetrieval atRetrieval = (IMemoryAccessTypeAwareMemoryBlockRetrieval) retrieval;
+			final Object context = getContextSelectionForPart(part);
+			Job job = new Job("update memory access type choices") { //$NON-NLS-1$
+				@Override
+				protected IStatus run(IProgressMonitor monitor) {
+					atRetrieval.getMemoryAccessTypes(context, new GetMemoryAccessTypesRequest() {
+						@Override
+						public void done() {
+							runOnUIThread(() -> {
+								if (isSuccess()) {
+									String[] accessTypes = getMemoryAccessTypes();
+									String[] tooltips = getMemoryAccessTypeTooltips();
+									if (accessTypes.length >= 1) {
+										doAddMemoryBlocksWithAccessType(renderingSite, context, atRetrieval,
+												accessTypes, tooltips);
+										return;
+									}
+								}
+								// If we get here, the access type dialog isn't
+								// necessary. Use the standard (platform) one
+								invokePlatformAction(renderingSite);
+							});
+						}
+					});
+					return Status.OK_STATUS;
+				}
+			};
+			job.setSystem(true);
+			job.schedule();
+			return;
+		}
 		if (!(retrieval instanceof IMemorySpaceAwareMemoryBlockRetrieval)) {
 			invokePlatformAction(renderingSite);
 			return;
@@ -254,6 +317,17 @@ public class AddMemoryBlocks implements IAddMemoryBlocksTarget {
 		public String[] expressions;
 	}
 
+	class AddressAndAccessTypeHolder extends ParamHolder {
+		public AddressAndAccessTypeHolder(final String[] addresses, final String accessType) {
+			this.addresses = addresses;
+			this.accessType = accessType;
+		}
+
+		public String[] addresses;
+
+		public String accessType;
+	}
+
 	private void addMemoryBlocks(Object context, IMemorySpaceAwareMemoryBlockRetrieval memRetrieval,
 			final ParamHolder params, IMemoryRenderingSite memRendSite) {
 
@@ -273,6 +347,93 @@ public class AddMemoryBlocks implements IAddMemoryBlocksTarget {
 					memBlock = memRetrieval.getMemoryBlock(addrOrExpr, context,
 							((AddressAndSpaceHolder) params).memorySpace);
 				else
+					memBlock = memRetrieval.getExtendedMemoryBlock(addrOrExpr, context);
+
+				// add block to memory block manager
+				if (memBlock != null) {
+					IMemoryBlock[] memArray = new IMemoryBlock[] { memBlock };
+
+					DebugPlugin.getDefault().getMemoryBlockManager().addMemoryBlocks(memArray);
+
+					addDefaultRenderings(memBlock, memRendSite);
+				} else {
+					// open error if it failed to retrieve a memory block
+					openError(Messages.AddMemBlocks_title, Messages.AddMemBlocks_noMemoryBlock, null);
+				}
+			} catch (DebugException e1) {
+				openError(Messages.AddMemBlocks_title, Messages.AddMemBlocks_failed, e1);
+			} catch (NumberFormatException e2) {
+				String message = Messages.AddMemBlocks_failed + "\n" + Messages.AddMemBlocks_input_invalid; //$NON-NLS-1$
+				openError(Messages.AddMemBlocks_title, message, null);
+			}
+		}
+	}
+
+	private void doAddMemoryBlocksWithAccessType(final IMemoryRenderingSite renderingSite, final Object context,
+			final IMemoryAccessTypeAwareMemoryBlockRetrieval retrieval, String[] accessTypes, String[] tooltips) {
+		Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+
+		// create dialog to ask for expression/address and access type
+		AddMemoryAccessTypeBlockDialog dialog = new AddMemoryAccessTypeBlockDialog(shell, accessTypes, tooltips);
+		dialog.open();
+		int returnCode = dialog.getReturnCode();
+		if (returnCode == Window.CANCEL)
+			return;
+
+		String input = dialog.enteredExpression() ? dialog.getExpression() : dialog.getAddress();
+
+		List<String> list = new ArrayList<>();
+
+		if (input.length() == 0)
+			list.add(""); //$NON-NLS-1$
+		else {
+			StringTokenizer tokenizer = new StringTokenizer(input, ","); //$NON-NLS-1$
+			while (tokenizer.hasMoreTokens())
+				list.add(tokenizer.nextToken());
+		}
+
+		final String[] addrsOrExprs = list.toArray(new String[list.size()]);
+
+		ParamHolder params;
+		if (dialog.enteredExpression())
+			params = new ExpressionsHolder(addrsOrExprs);
+		else
+			params = new AddressAndAccessTypeHolder(addrsOrExprs, dialog.getAccessType());
+
+		final ParamHolder params_f = params;
+		Job job = new Job("Add Memory Block") { //$NON-NLS-1$
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				addMemoryBlocksWithAccessType(context, retrieval, params_f, renderingSite);
+				return Status.OK_STATUS;
+			}
+		};
+		job.setSystem(true);
+		job.schedule();
+	}
+
+	private void addMemoryBlocksWithAccessType(Object context, IMemoryAccessTypeAwareMemoryBlockRetrieval memRetrieval,
+			final ParamHolder params, IMemoryRenderingSite memRendSite) {
+
+		final String[] addrsOrExprs = (params instanceof AddressAndAccessTypeHolder)
+				? ((AddressAndAccessTypeHolder) params).addresses
+				: ((ExpressionsHolder) params).expressions;
+
+		for (int i = 0; i < addrsOrExprs.length; i++) {
+			String addrOrExpr = addrsOrExprs[i].trim();
+			try {
+
+				// get extended memory block with the expression or address
+				// entered
+				IMemoryBlockExtension memBlock;
+
+				if (params instanceof AddressAndAccessTypeHolder) {
+					String accessType = ((AddressAndAccessTypeHolder) params).accessType;
+					if (accessType != null && !accessType.isEmpty())
+						memBlock = memRetrieval.getMemoryBlockForAccessType(addrOrExpr, context, accessType);
+					else
+						memBlock = memRetrieval.getExtendedMemoryBlock(addrOrExpr, context);
+				} else
 					memBlock = memRetrieval.getExtendedMemoryBlock(addrOrExpr, context);
 
 				// add block to memory block manager

@@ -151,6 +151,7 @@ public class ElfBinaryObject extends BinaryObjectAdapter {
 
 		//		addSymbols(helper.getExternalFunctions(), ISymbol.FUNCTION, list);
 		addSymbols(helper.getLocalFunctions(), ISymbol.FUNCTION, list);
+		addSymbols(helper.getUnknownSymbols(), ISymbol.FUNCTION, list);
 		//		addSymbols(helper.getExternalObjects(), ISymbol.VARIABLE, list);
 		addSymbols(helper.getLocalObjects(), ISymbol.VARIABLE, list);
 		list.trimToSize();

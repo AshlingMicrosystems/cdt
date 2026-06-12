@@ -217,6 +217,21 @@ public class ElfHelper implements AutoCloseable {
 		return ret;
 	}
 
+	public Elf.Symbol[] getUnknownSymbols() throws IOException {
+		Vector<Symbol> v = new Vector<>();
+
+		loadSymbols();
+		loadSections();
+
+		for (int i = 0; i < symbols.length; i++) {
+			if (symbols[i].st_type() == Elf.Symbol.STT_NOTYPE && symbols[i].st_shndx == 2) {
+				v.add(symbols[i]);
+			}
+		}
+		Elf.Symbol[] ret = v.toArray(new Elf.Symbol[v.size()]);
+		return ret;
+	}
+
 	public Elf.Symbol[] getLocalObjects() throws IOException {
 		Vector<Symbol> v = new Vector<>();
 

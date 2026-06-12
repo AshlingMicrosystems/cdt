@@ -1147,7 +1147,7 @@ public class VariableVMNode extends AbstractExpressionVMNode
 				// IVariableDMData object to the localsDMData List for later processing (see above).
 
 				for (IVariableDMContext localDMC : localsDMCs) {
-					DataRequestMonitor<IVariableDMData> rm = new DataRequestMonitor<IVariableDMData>(dsfExecutor, crm) {
+					DataRequestMonitor<IVariableDMData> rm = new DataRequestMonitor<>(dsfExecutor, crm) {
 						@Override
 						public void handleSuccess() {
 							localsDMData.add(getData());

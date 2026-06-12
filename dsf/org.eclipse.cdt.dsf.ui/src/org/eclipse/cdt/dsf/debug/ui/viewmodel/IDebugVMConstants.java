@@ -39,6 +39,7 @@ public interface IDebugVMConstants {
 	 * Make expression column ID the same as platform's "name" column ID to
 	 * enable the File->Rename in-line editing action in the expressions view.
 	 */
+	@SuppressWarnings("restriction")
 	public static final String COLUMN_ID__EXPRESSION = IDebugUIConstants.COLUMN_ID_VARIABLE_NAME;
 
 	/**

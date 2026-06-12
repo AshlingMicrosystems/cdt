@@ -14,6 +14,7 @@
 
 package org.eclipse.cdt.debug.internal.ui.elements.adapters;
 
+import org.eclipse.cdt.debug.core.model.provisional.IMemoryAccessTypeAwareMemoryBlockRetrieval;
 import org.eclipse.cdt.debug.core.model.provisional.IMemorySpaceAwareMemoryBlockRetrieval;
 import org.eclipse.cdt.debug.internal.ui.views.memory.AddMemoryBlocks;
 import org.eclipse.core.runtime.IAdapterFactory;
@@ -21,7 +22,7 @@ import org.eclipse.debug.ui.actions.IAddMemoryBlocksTarget;
 
 /**
  * Provides the IAdaptable mapping for things related to the memory-space
- * support in the Memory and Memory Browser views.
+ * and memory access type support in the Memory and Memory Browser views.
  */
 public class CMemoryAdapterFactory implements IAdapterFactory {
 
@@ -34,12 +35,13 @@ public class CMemoryAdapterFactory implements IAdapterFactory {
 			return (T) adaptableObject;
 		}
 
-		// If the backend supports memory spaces we use a custom Add Monitor
-		// dialog, though our IAddMemoryBlocksTarget may decide to invoke the
-		// standard, platform dialog if the customization isn't actually
-		// necessary.
+		// If the backend supports memory spaces or memory access types, we use 
+		// a custom Add Monitor dialog, though our IAddMemoryBlocksTarget may 
+		// decide to invoke the standard platform dialog if the customization 
+		// isn't actually necessary.
 		if (adapterType.equals(IAddMemoryBlocksTarget.class)) {
-			if (adaptableObject instanceof IMemorySpaceAwareMemoryBlockRetrieval) {
+			if (adaptableObject instanceof IMemorySpaceAwareMemoryBlockRetrieval
+					|| adaptableObject instanceof IMemoryAccessTypeAwareMemoryBlockRetrieval) {
 				return (T) fgAddMemoryBlocks;
 			}
 		}

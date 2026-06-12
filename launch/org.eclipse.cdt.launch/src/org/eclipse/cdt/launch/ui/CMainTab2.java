@@ -28,6 +28,7 @@ import org.eclipse.cdt.core.model.ICElement;
 import org.eclipse.cdt.core.model.ICProject;
 import org.eclipse.cdt.core.settings.model.ICProjectDescription;
 import org.eclipse.cdt.debug.core.ICDTLaunchConfigurationConstants;
+import org.eclipse.cdt.launch.LaunchUtils;
 import org.eclipse.cdt.launch.internal.ui.LaunchImages;
 import org.eclipse.cdt.launch.internal.ui.LaunchMessages;
 import org.eclipse.cdt.launch.internal.ui.LaunchUIPlugin;
@@ -52,14 +53,17 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.TwoPaneElementSelector;
 
 /**
@@ -89,7 +93,7 @@ public class CMainTab2 extends CAbstractMainTab {
 	 * Combo box to select which type of post mortem file should be used.
 	 * We currently support core files and trace files.
 	 */
-	//protected Combo fCoreTypeCombo;
+	protected Combo fCoreTypeCombo;
 
 	private boolean fDontCheckProgram = false;
 	private final boolean fSpecifyCoreFile;
@@ -121,7 +125,7 @@ public class CMainTab2 extends CAbstractMainTab {
 		Composite comp = new Composite(parent, SWT.NONE);
 		setControl(comp);
 
-		LaunchUIPlugin.getDefault().getWorkbench().getHelpSystem().setHelp(getControl(),
+		PlatformUI.getWorkbench().getHelpSystem().setHelp(getControl(),
 				ICDTLaunchHelpContextIds.LAUNCH_CONFIGURATION_DIALOG_MAIN_TAB);
 
 		GridLayout topLayout = new GridLayout();
