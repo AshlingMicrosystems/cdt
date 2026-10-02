@@ -17,11 +17,11 @@
 	<parent>
 		<groupId>org.eclipse.cdt</groupId>
 		<artifactId>cdt-parent</artifactId>
-		<version>12.4.0-SNAPSHOT</version>
+		<version>12.5.0-SNAPSHOT</version>
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 
-	<version>12.4.0-SNAPSHOT</version>
+	<version>12.5.0-SNAPSHOT</version>
 	<artifactId>org.eclipse.cdt.doc.isv</artifactId>
 	<packaging>eclipse-plugin</packaging>
 
@@ -86,6 +86,13 @@
 									<type>eclipse-plugin</type>
 								</dependency>
 							</dependencies>
+							<repositories>
+								<repository>
+									<id>platform</id>
+									<layout>p2</layout>
+									<url>${help-docs-eclipserun-repo}</url>
+								</repository>
+							</repositories>
 						</configuration>
 						<executions>
 							<execution>
@@ -121,7 +128,7 @@
 											<additionalArgument>-linkoffline ../../org.eclipse.platform.doc.isv/reference/api
 											</additionalArgument>
 											<additionalArgument>-public</additionalArgument>
-											<additionalArgument>-header "Eclipse CDT 12.4.0"
+											<additionalArgument>-header "Eclipse CDT 12.5.0"
 											</additionalArgument>
 											<additionalArgument>-bottom "Copyright (c) IBM Corp. and others 2004, 2021. All Rights Reserved."</additionalArgument>
 											<additionalArgument>-tag 'noimplement:a:Restriction:'</additionalArgument>
@@ -132,34 +139,6 @@
 										</additionalArguments>
 									</javadocOptions>
 								</configuration>
-							</execution>
-						</executions>
-					</plugin>
-				</plugins>
-			</build>
-		</profile>
-		<profile>
-			<id>fake-doc</id>
-			<activation>
-				<property>
-					<name>skipDoc</name>
-				</property>
-			</activation>
-			<build>
-				<plugins>
-					<plugin>
-						<artifactId>maven-antrun-plugin</artifactId>
-						<executions>
-							<execution>
-								<phase>compile</phase>
-								<configuration>
-									<target>
-										<touch file="index/indexed_docs" mkdirs="true" />
-									</target>
-								</configuration>
-								<goals>
-									<goal>run</goal>
-								</goals>
 							</execution>
 						</executions>
 					</plugin>

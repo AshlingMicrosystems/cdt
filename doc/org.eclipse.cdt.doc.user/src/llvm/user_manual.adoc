@@ -1,5 +1,5 @@
 ////
-Copyright (c) 2000, 2025 Contributors to the Eclipse Foundation
+Copyright (c) 2000, 2026 Contributors to the Eclipse Foundation
 This program and the accompanying materials
 are made available under the terms of the Eclipse Public License 2.0
 which accompanies this distribution, and is available at
@@ -28,9 +28,9 @@ endif::[]
 // adoc files.
 // ENDOFHEADER
 
-== LLVM with Clang/GCC for Eclipse CDT
+== LLVM with Clang for Eclipse CDT
 
-This guide is intended for the users of the LLVM with Clang/GCC for
+This guide is intended for the users of the LLVM with Clang for
 Eclipse CDT plugin. It describes the initial configuration, general
 information and some special cases about the plugin.
 

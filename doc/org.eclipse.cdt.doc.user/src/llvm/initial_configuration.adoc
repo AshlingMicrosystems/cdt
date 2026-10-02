@@ -1,5 +1,5 @@
 ////
-Copyright (c) 2000, 2025 Contributors to the Eclipse Foundation
+Copyright (c) 2000, 2026 Contributors to the Eclipse Foundation
 This program and the accompanying materials
 are made available under the terms of the Eclipse Public License 2.0
 which accompanies this distribution, and is available at
@@ -40,8 +40,8 @@ C/{cpp} -> Build -> Environment. Select the `PATH` environment variable and then
 value to point where your LLVM binaries are located.
 
 If your `PATH` environment variable is set correctly, you should see the
-_LLVM with Clang_ and _LLVM with GCC_ toolchains available for selection within the
-CDT project wizard for managed build projects. The toolchains are available for both
+_LLVM with Clang_ toolchain available for selection within the
+CDT project wizard for managed build projects. The toolchain is available for both
 C and {cpp} projects.
 
 NOTE: Clang is automatically detected when installed on a Microsoft Windows host using

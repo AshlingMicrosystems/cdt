@@ -1,5 +1,5 @@
 ////
-Copyright (c) 2000, 2025 Contributors to the Eclipse Foundation
+Copyright (c) 2000, 2026 Contributors to the Eclipse Foundation
 This program and the accompanying materials
 are made available under the terms of the Eclipse Public License 2.0
 which accompanies this distribution, and is available at
@@ -30,15 +30,15 @@ endif::[]
 
 == General information
 
-The LLVM with Clang/GCC for Eclipse CDT plug-in integrates an LLVM toolchain using
-the Clang or llvm-gcc compiler with the CDT managed build system to compile C/(cpp} programs.
+The LLVM with Clang for Eclipse CDT plug-in integrates an LLVM toolchain using
+the Clang compiler with the CDT managed build system to compile C/{cpp} programs.
 
 http://www.llvm.org[LLVM] is a modern toolchain that supports the
-compilation of C/(cpp} code (among others) to LLVM virtual machine's
+compilation of C/{cpp} code (among others) to LLVM virtual machine's
 _bitcode_, which in turn can be compiled to each platform's native
 binary.
 
 The plug-in integrates the following tools from the LLVM toolchain:
-Clang/Clang{plus}{plus}/llvm-gcc/llvm-g{plus}{plus} (C/(cpp} compilers), llvm-ld (linker),
+Clang/Clang{plus}{plus} (C/{cpp} compilers), llvm-ld (linker),
 llvm-ar (archiver), llvm-as (assembler), llc (static compiler) and lli
 (JIT/Interpreter).
